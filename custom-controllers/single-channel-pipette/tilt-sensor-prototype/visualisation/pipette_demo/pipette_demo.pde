@@ -2,18 +2,21 @@ import processing.serial.*;
 import java.awt.event.KeyEvent;
 import java.io.IOException;
 
-PShape model;
+PShape model_pipette_up;
+PShape model_pipette_down;
 Serial myPort;
 
 String data="";
 float roll, pitch;
+boolean button_state;
 
 void setup() {
   size (960, 640, P3D);
   myPort = new Serial(this, "/dev/ttyUSB0", 9600); // starts the serial communication
   myPort.bufferUntil('\n');
   
-  model = loadShape("pipette.obj");
+  model_pipette_up = loadShape("render_models/pipette_up.obj");
+  model_pipette_down = loadShape("render_models/pipette_down.obj");
   shapeMode(CENTER);
 }
 
@@ -31,7 +34,11 @@ void draw() {
   
   scale(15);
   
-  shape(model);
+  if (button_state) {
+    shape(model_pipette_up);
+  } else {
+    shape(model_pipette_down);
+  }
 }
 
 // Read data from the Serial Port
@@ -49,6 +56,7 @@ void serialEvent (Serial myPort) {
       //--- Roll,Pitch in degrees
       roll = float(items[0]);
       pitch = float(items[1]);
+      button_state = int(items[2])==0;
     }
   }
 }
