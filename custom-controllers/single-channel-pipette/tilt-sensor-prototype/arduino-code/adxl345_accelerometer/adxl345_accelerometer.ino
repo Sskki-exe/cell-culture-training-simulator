@@ -5,9 +5,12 @@ int ADXL345 = 0x53; // The ADXL345 sensor I2C address
 float X_out, Y_out, Z_out;  // Outputs
 float roll,pitch,rollF,pitchF=0;
 
+const int button_pin = 2;
+
 void setup() {
   Serial.begin(9600); // Initiate serial communication for printing the results on the Serial monitor
  
+  pinMode(button_pin, INPUT_PULLUP);
   Wire.begin(); // Initiate the Wire library
   // Set ADXL345 in measuring mode
   Wire.beginTransmission(ADXL345); // Start communicating with the device
@@ -62,5 +65,7 @@ void loop() {
 
   Serial.print(rollF);
   Serial.print("/");
-  Serial.println(pitchF);
+  Serial.print(pitchF);
+  Serial.print("/");
+  Serial.println(!digitalRead(button_pin));
 }
