@@ -9,7 +9,7 @@ const int button_pin = 2;
 
 void setup() {
   Serial.begin(9600); // Initiate serial communication for printing the results on the Serial monitor
- 
+  
   pinMode(button_pin, INPUT_PULLUP);
   Wire.begin(); // Initiate the Wire library
   // Set ADXL345 in measuring mode
@@ -39,7 +39,7 @@ void setup() {
   Wire.write(0x20);
   Wire.write(-9);
   Wire.endTransmission();
-  delay(10);
+  delay(10); 
 }
 
 void loop() {
