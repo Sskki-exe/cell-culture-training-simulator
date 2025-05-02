@@ -9,7 +9,7 @@ arduino = serial.Serial(port=COMPORT, baudrate=115200, timeout=.1)  # Define Ser
 # Read Serial function
 def read_hub_serial():
     data = arduino.readline()[:-3] # Remove the newline characters
-    return data
+    return data # pipette1:
 
 # Sample main loop
 while True: 

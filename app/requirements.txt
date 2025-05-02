@@ -1,0 +1,6 @@
+customtkinter==5.2.2
+mediapipe==0.10.20
+numpy==1.26.4
+opencv_contrib_python==4.11.0.86
+opencv_python==4.10.0.84
+ultralytics==8.3.91
