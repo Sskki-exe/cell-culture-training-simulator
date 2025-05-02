@@ -12,6 +12,8 @@ from PIL import Image, ImageTk
 import time
 from datetime import datetime
 import os
+from serial_read_sample import read_hub_serial
+import csv
 
 def convertCVtoPIL(frame):
     """Function to convert from openCV array to PIL array
@@ -328,6 +330,19 @@ class recordScreen(ctk.CTkFrame):
             print("AHHHHHHHHHHHH")
             exit()
 
+        file = open(f"{dateStr}/raw/data.csv", mode='w', newline='')
+        writer = csv.DictWriter(file)
+        writer.writeheader()
+        stringDict = dict()
+        stringDict.aRollF = 0
+        stringDict.aPitchF = 0
+        stringDict.aButton = 1
+        stringDict.bRollF = 0
+        stringDict.bPitchF = 0
+        stringDict.bButton = 1
+
+
+        
         print("Start recording tool usage")
         self.recordCamera = True
 
@@ -343,6 +358,10 @@ class recordScreen(ctk.CTkFrame):
                 
                 self.cameraFrame.create_image(0, 0, anchor=tk.NW, image=framePIL)
                 self.cameraFrame.image = framePIL
+                string = read_hub_serial()
+                string.split()
+                
+                writer.writerow()
                 self.update()
                 # time.sleep(1/30)
                 count += 1
