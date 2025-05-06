@@ -331,18 +331,28 @@ class recordScreen(ctk.CTkFrame):
             exit()
 
         file = open(f"{dateStr}/raw/data.csv", mode='w', newline='')
-        writer = csv.DictWriter(file)
+        writer = csv.DictWriter(file, fieldnames=["RollF","PitchF","Button"])
         writer.writeheader()
-        stringDict = dict()
-        stringDict.aRollF = 0
-        stringDict.aPitchF = 0
-        stringDict.aButton = 1
-        stringDict.bRollF = 0
-        stringDict.bPitchF = 0
-        stringDict.bButton = 1
-
-
         
+        def serial2Dict(serialString: str):
+            """Function to convert from the string outputted from the Arduino into a dictionary for CSV saving.
+
+            Args:
+                serialString (str): String from Arduino
+
+            Returns:
+                dict: Dictionary explaining what string was
+            """
+            label, data = serialString.split(":")
+            roll, pitch, button = data.split("/")
+            row = {
+                "RollF":roll,
+                "PitchF":pitch,
+                "Button":button
+            }
+            return row
+
+
         print("Start recording tool usage")
         self.recordCamera = True
 
@@ -359,9 +369,10 @@ class recordScreen(ctk.CTkFrame):
                 self.cameraFrame.create_image(0, 0, anchor=tk.NW, image=framePIL)
                 self.cameraFrame.image = framePIL
                 string = read_hub_serial()
-                string.split()
-                
-                writer.writerow()
+
+                strDict = serial2Dict(string)
+
+                writer.writerow(strDict)
                 self.update()
                 # time.sleep(1/30)
                 count += 1
