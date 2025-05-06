@@ -332,7 +332,6 @@ class recordScreen(ctk.CTkFrame):
 
         file = open(f"{dateStr}/raw/data.csv", mode='w', newline='')
         writer = csv.DictWriter(file, fieldnames=["RollF","PitchF","Button"])
-        writer.writeheader()
         
         def serial2Dict(serialString: str):
             """Function to convert from the string outputted from the Arduino into a dictionary for CSV saving.
