@@ -52,10 +52,10 @@ def visualizerVideo(filename: str, cameraProperties: list,  dateStr: str = "", t
         # print(T)
 
         if button == 0: # button down
-            displayObject = o3d.io.read_triangle_mesh("visualiser/pipette_up.obj")
+            displayObject = o3d.io.read_triangle_mesh("3dassets/pipette_up.obj")
 
         elif button == 1: # button down
-            displayObject = o3d.io.read_triangle_mesh("visualiser/pipette_down.obj")
+            displayObject = o3d.io.read_triangle_mesh("3dassets/pipette_down.obj")
 
         # print("Textures loaded:", len(displayObject.textures) > 0)
 
