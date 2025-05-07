@@ -19,6 +19,7 @@ def read_hub_serial():
     return data # pipette1:
 
 # Sample main loop
-while True: 
-    num = input("Press [Enter] to take a reading")  # Janky keyboard input solution
-    print(read_hub_serial())
+if __name__ == "__main__":
+    while True: 
+        num = input("Press [Enter] to take a reading")  # Janky keyboard input solution
+        print(read_hub_serial())
