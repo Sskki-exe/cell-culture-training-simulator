@@ -15,6 +15,7 @@ import os
 from serial_read_sample import read_hub_serial
 import csv
 from visualizer import visualizerVideo
+import numpy as np
 
 def convertCVtoPIL(frame):
     """Function to convert from openCV array to PIL array
@@ -79,6 +80,7 @@ class app(ctk.CTk):
         # Results interpreted from most recent recording
         self.videoName = [] 
         self.toolData = ""
+        self.toolSampleRange = None
 
         # Show loading menu
         self.display = menuFrame(self)
@@ -89,6 +91,11 @@ class app(ctk.CTk):
         """Function to display menu
         """
         self.handDetector = handLandmarker(cameraProperties=self.cameraProperties) # Note: might not need to be restarted
+        
+        self.videoName = []         
+        self.toolData = ""
+        self.toolSampleRange = None
+
         self.display = menuFrame(self)
         self.display.grid(row=0, column = 0, pady=10, padx=10, sticky = "nsew")
         self.update()
@@ -246,7 +253,7 @@ class recordScreen(ctk.CTkFrame):
             pass
 
 
-        file = open(f"{dateStr}/raw/data.csv", mode='w', newline='')
+        file = open(f"video/{dateStr}/raw/data.csv", mode='w', newline='')
         dataWriter = csv.DictWriter(file, fieldnames=["RollF","PitchF","Button"])
         
         def serial2Dict(serialString: str):
@@ -293,6 +300,7 @@ class recordScreen(ctk.CTkFrame):
         start = time.time()
 
         count = 0
+        sampleCount = [0,0]
         while self.recordCamera == True:
             ret, frame = self.master.cap.read()
             if ret:
@@ -314,6 +322,7 @@ class recordScreen(ctk.CTkFrame):
 
         videoWriter.release()
         self.master.videoName.append(videoName)
+        sampleCount[0] = sampleCount[0] + count
         
         # Step 2: Collect Materials
         videoWriter, videoName = camera.createVideoWriter(function=f"{dateStr}/raw/collection", cameraProperties=self.master.cameraProperties)
@@ -352,6 +361,8 @@ class recordScreen(ctk.CTkFrame):
 
         videoWriter.release()
         self.master.videoName.append(videoName)
+        sampleCount[0] = sampleCount[0] + count
+
   
 
         # Step 3: Use Tool
@@ -394,6 +405,7 @@ class recordScreen(ctk.CTkFrame):
 
         videoWriter.release()
         self.master.videoName.append(videoName)
+        sampleCount[1] = sampleCount[0] + count
 
         # Step 4: Clean Space
         videoWriter, videoName = camera.createVideoWriter(function=f"{dateStr}/raw/disposal", cameraProperties=self.master.cameraProperties)
@@ -470,8 +482,10 @@ class recordScreen(ctk.CTkFrame):
 
         videoWriter.release()
         self.master.videoName.append(videoName)
-        self.master.toolData = f"{dateStr}/raw/data.csv"
+        self.master.toolData = f"video/{dateStr}/raw/data.csv"
         file.close()
+        sampleCount[0] = sampleCount[0]-1
+        self.master.toolSampleRange = sampleCount
         self.master.displayProcessVideo(self.no, dateStr)
         self.destroy()
 
@@ -499,6 +513,7 @@ class processVideoScreen(ctk.CTkFrame):
         self.correctMaterials = False
         self.emptySpace = False
         self.endSanitisation = 0
+        self.toolSampleRange = self.master.toolSampleRange
 
         # Graphics
         self.grid_columnconfigure(0, weight = 1)
@@ -515,7 +530,7 @@ class processVideoScreen(ctk.CTkFrame):
         self.titleLabel = ctk.CTkLabel(self, text = f"Reviewing", font = ("Segoe UI", 100, "bold"))
         self.titleLabel.grid(row = 0, column = 0, columnspan = 2, pady=10, padx=10, sticky = "nsew")
 
-        self.cameraFrame = tk.Canvas(self, width = self.master.cameraProperties[0], height = self.master.cameraProperties[1], highlightthickness=1)
+        self.cameraFrame = tk.Canvas(self, width = self.master.cameraProperties[0]*2, height = self.master.cameraProperties[1], highlightthickness=1)
         self.cameraFrame.grid(row = 1, column = 0, pady = 10, padx = 10)
 
         tempFrame = Image.open("loadingGraphics/wait.jpg")
@@ -707,6 +722,10 @@ class processVideoScreen(ctk.CTkFrame):
             processedVideoList[index] = processVideoName
             statistics[index] = handsRemovedCount
 
+            with open(self.master.toolData, mode="r", newline='') as file:
+                allData = list(csv.DictReader(file))  # Read all rows into a list
+                toolData = allData[self.toolSampleRange[0]:self.toolSampleRange[1]]     # Adjust for 0-based indexing
+
         sanitiseCheck(self.master.videoName[0], 0)
         print("Finished processing starting sanitisation")
 
@@ -722,11 +741,12 @@ class processVideoScreen(ctk.CTkFrame):
         sanitiseCheck(self.master.videoName[4], 4)
         print("Finished processing sanitisation")
 
-        visualizerVideo(self.master.toolData, self.master.cameraProperties,self.dateStr)
+        toolVideoName = visualizerVideo(self.master.toolData, self.master.cameraProperties, self.dateStr)
         print("Finished processing tool use")
 
         print("Finished all processing")
 
+        self.master.toolData = toolVideoName
         self.master.videoName = processedVideoList
 
         [self.startSanitisation, self.correctMaterials, self.handRemovals, self.emptySpace, self.endSanitisation] = statistics
@@ -743,35 +763,44 @@ class processVideoScreen(ctk.CTkFrame):
         self.titleLabel.configure(text = "Playing video")
         self.update()
 
-        videoWriter, videoName = camera.createVideoWriter(f"{self.dateStr}/final/final", self.master.cameraProperties)
+        cameraProperties = self.master.cameraProperties
+        cameraProperties[0] = 2 * cameraProperties[0]
+
+        videoWriter, videoName = camera.createVideoWriter(f"{self.dateStr}/final/final", cameraProperties)
 
         print(f"Now replaying footage {videoName}")
+        toolFootage = cv.VideoCapture(self.master.toolData)
+        if not toolFootage.isOpened():
+            print("pain")
 
         for video in self.master.videoName:
-            footage = cv.VideoCapture(video)
-            if not footage.isOpened():
+            camFootage = cv.VideoCapture(video)
+            if not camFootage.isOpened():
                  print("pain")
             else:
                 print(f"Playing {video}")
 
                 while True:
-                    ret, frame = footage.read()
+                    retCam, frameCam = camFootage.read()
+                    retTool, frameTool = toolFootage.read()
 
-                    if ret:
+                    if retCam and retTool:
+                        frame = np.hstack((frameCam,frameTool))
                         videoWriter.write(frame)
 
                         framePIL = convertCVtoPIL(frame)
                         
                         self.cameraFrame.create_image(0, 0, anchor=tk.NW, image=framePIL)
                         self.cameraFrame.image = framePIL
+
                         self.update()
 
-                    if ret == False or cv.waitKey(1) == ord('q'):
+                    if retCam == False or cv.waitKey(1) == ord('q'):
                         break
                 
-            footage.release()
+            camFootage.release()
         
-        
+        toolFootage.release()
         videoWriter.release()
 
         self.playButton.configure(text = "Return to menu")         
