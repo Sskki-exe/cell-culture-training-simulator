@@ -192,14 +192,14 @@ class handLandmarker():
                 try:
                     depth = self.getDepth(hand_landmarks) # Get the depth of the hand(s) locations
                     annotated_image = self.drawCentreCircle(annotated_image, [x, y, z])
-                    print(f"Depth: {depth}")
+                    # print(f"Depth: {depth}")
 
                     if depth > 0: # self.backgroundDepth: 
                         (circleCentre) = self.convertNormalToImageCoord(x,y) # Convert the normal coordinate representation of the hand into image coordinates
                         middleFingerTip = np.array(self.convertNormalToImageCoord(hand_landmarks[12].x,hand_landmarks[12].y)) # Gets the coordinate of the middle knuckle
                         wrist = np.array(self.convertNormalToImageCoord(hand_landmarks[0].x,hand_landmarks[0].y)) # Gets the coordinate of the wrist
                         circleRadius = int(np.linalg.norm(middleFingerTip-wrist)/2) # Assume sanitation is circular, with origin on the middle knuckle and diameter the length of the wrist to the middle tip finger
-                        print(f"Circle Radius: {circleRadius}")
+                        # print(f"Circle Radius: {circleRadius}")
                         try:
                             cv.circle(mask.mask, center=circleCentre, radius=circleRadius, color=(0, 255, 0), thickness=cv.FILLED )# Draw the circle around the centre knuckle on the mask
 
@@ -462,7 +462,7 @@ class handLandmarker():
                         else:
                             currentResult.result = prevResult
 
-                    smoothedResult.append(currentResult)
+                    smoothedResultList.append(currentResult)
         
         smoothedResultList.append(resultList[-1])
 
