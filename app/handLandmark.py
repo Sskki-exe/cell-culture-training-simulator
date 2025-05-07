@@ -568,6 +568,41 @@ class handLandmarker():
             hand_world_landmarks=averagedHandWorldLandmarks
         )
     
+    def getHandSpeed(self, prevResult, currentResult):
+        prevLeft = False
+        prevRight = False
+        currentLeft = False
+        currentRight = False
+        speed = 0 # Assume base line speed
+
+        for index, hand in enumerate(prevResult.handedness): # Can assume only one user, so max two hands (one left, one right)
+            if hand[0].category_name == "Left":
+                prevLeft = index
+            elif hand[0].category_name == "Right":
+                prevRight = index
+
+        for index, hand in enumerate(currentResult.handedness):
+            if hand[0].category_name == "Left":
+                currentLeft = index
+            elif hand[0].category_name == "Right":
+                currentRight = index
+
+        if not prevLeft and type(prevLeft) == type(currentLeft): 
+            # can compare speed in left hand
+            pass
+
+        else:
+            leftspeed = 0
+
+        if not prevRight and type(prevRight) == type(currentRight): 
+            # can compare speed in right hand
+            pass
+        
+        else:
+            rightspeed = 0
+
+        return max(leftspeed, rightspeed)
+    
     ################################ Archaic Functions ############################################ 
     # def analyseVideo(self, videoName: str):
     #     """Perform a handtracking analysis of a full video
