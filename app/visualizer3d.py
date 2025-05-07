@@ -10,7 +10,7 @@ FONT_SIZE = 1
 FONT_THICKNESS = 1
 HANDEDNESS_TEXT_COLOR = (88, 205, 54) # vibrant green
 
-def visualizerVideo(filename: str, cameraProperties: list,  dateStr: str = "", test: bool = False):
+def visualizer3dVideo(filename: str, cameraProperties: list,  dateStr: str = "", test: bool = False):
     dataCSV = pd.read_csv(filename, header = None)
     dataCSV.columns = ['roll','pitch','button']
     if test:
@@ -199,7 +199,7 @@ if __name__=="__main__":
     # randomTestFile = generate_random_transform_csv(500)
     randomTestFile = generate_sweep_csv()
 
-    animatedVideo = visualizerVideo(randomTestFile, cameraProperties, test = True)
+    animatedVideo = visualizer3dVideo(randomTestFile, cameraProperties, test = True)
 
     footage = cv.VideoCapture(animatedVideo)
 

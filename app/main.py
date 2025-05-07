@@ -14,7 +14,7 @@ from datetime import datetime
 import os
 from serial_read_sample import read_hub_serial
 import csv
-from visualizer import visualizerVideo
+from visualizer3d import visualizer3dVideo
 import numpy as np
 
 def convertCVtoPIL(frame):
@@ -741,7 +741,7 @@ class processVideoScreen(ctk.CTkFrame):
         sanitiseCheck(self.master.videoName[4], 4)
         print("Finished processing sanitisation")
 
-        toolVideoName = visualizerVideo(self.master.toolData, self.master.cameraProperties, self.dateStr)
+        toolVideoName = visualizer3dVideo(self.master.toolData, self.master.cameraProperties, self.dateStr)
         print("Finished processing tool use")
 
         print("Finished all processing")
