@@ -217,7 +217,7 @@ class handLandmarker():
 
         cv.putText(annotated_image, f"Analysing Sanitisation of Workspace",
                     (0, 25), cv.FONT_HERSHEY_DUPLEX,
-                    handLandmarker.FONT_SIZE, (0,0,0), handLandmarker.FONT_THICKNESS, cv.LINE_AA)
+                    handLandmarker.FONT_SIZE/2, (0,0,0), handLandmarker.FONT_THICKNESS, cv.LINE_AA)
 
         cv.putText(annotated_image, f"Percentage Sanitised: {round(mask.calculateMaskCoverage(),2)}%",
                     (0, 50), cv.FONT_HERSHEY_DUPLEX,
@@ -250,6 +250,7 @@ class handLandmarker():
         middleKnuckle = np.array(self.convertNormalToImageCoord(detection_result[9].x,detection_result[9].y)) # Gets the coordinate of the middle knuckle
         wrist = np.array(self.convertNormalToImageCoord(detection_result[0].x,detection_result[0].y)) # Gets the coordinate of the wrist
         pixelDist = np.linalg.norm(middleKnuckle-wrist) # Figure out the amount of pixels used
+        # print(pixelDist)
         depth = self.backgroundDepth * self.handLength/pixelDist # Use similar triangles to figure out the depth (very primitive method)
         return depth
         

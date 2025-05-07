@@ -177,7 +177,7 @@ class ObjectDetectorYOLO():
 
         cv.putText(annotated_image, "Performing Object Detection",
         (0, 25), cv.FONT_HERSHEY_DUPLEX,
-        ObjectDetectorYOLO.FONT_SIZE, (0,0,0), ObjectDetectorYOLO.FONT_THICKNESS, cv.LINE_AA)
+        ObjectDetectorYOLO.FONT_SIZE/2, (0,0,0), ObjectDetectorYOLO.FONT_THICKNESS, cv.LINE_AA)
 
         items = self.count(analysis)
         count = sum(items.values())
