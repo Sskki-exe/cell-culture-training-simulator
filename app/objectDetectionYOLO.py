@@ -22,6 +22,18 @@ class ObjectDetectorYOLO():
     FONT_SIZE = 1
     FONT_THICKNESS = 1
     HANDEDNESS_TEXT_COLOR = (88, 205, 54) # vibrant green
+    COLORS = {
+    0: (203, 192, 255),  # Pink
+    1: (255, 255, 0),    # Cyan
+    2: (255, 0, 255),    # Magenta
+    3: (0, 255, 255),    # Yellow
+    4: (0, 165, 255),    # Orange
+    5: (0, 255, 0),      # Green
+    6: (0, 0, 255),      # Red
+    7: (255, 0, 0),      # Blue
+    8: (128, 0, 128),    # Purple
+    9: (42, 42, 165)     # Brown
+}
     ############################
     def __init__(self, modelPath: str = "runs/detect/train6/weights/best.pt"):
         """Used to create Object Detector 
@@ -179,10 +191,10 @@ class ObjectDetectorYOLO():
         boxes = result.boxes
         cls = result.boxes.cls
         size = 6
-        thickness = 1
+        thickness = 2
 
         for i, box in enumerate(boxes.xyxy):  
-            color = (random.randint(0,255), random.randint(0,255), random.randint(0,255))
+            color = ObjectDetectorYOLO.COLORS[int(cls[i])]
             className = result[0].names[int(cls[i])]
             xB = int(box[2])
             xA = int(box[0])
@@ -190,12 +202,17 @@ class ObjectDetectorYOLO():
             yA = int(box[1])
             xMid = int((xA + xB)/2)
             yMid = int((yA + yB)/2)
+            
+            (text_width, text_height), _ = cv.getTextSize(className, cv.FONT_HERSHEY_DUPLEX, 0.5, thickness)
+            textX = xMid - text_width // 2
+            textY = yMid + text_height // 2
+            cv.putText(annotated_image, className, (textX, textY - 3 * size), fontFace = cv.FONT_HERSHEY_COMPLEX, fontScale = 0.5, color = color) # add text so it centres on object
 
-            # Horizontal line
-            cv.line(annotated_image, (xMid + size, yMid + size), (xMid - size, yMid - size), color, thickness)
-            # Vertical line
-            cv.line(annotated_image, (xMid + size, yMid - size), (xMid - size, yMid + size), color, thickness)
-            cv.putText(annotated_image, className, (xMid, yMid + 2 - size), fontFace = cv.FONT_HERSHEY_COMPLEX, fontScale = 0.5, color = color)
+
+            # Add a crosshair into centre of detected object
+            cv.line(annotated_image, (xMid + size, yMid), (xMid - size, yMid), color, thickness)
+            cv.line(annotated_image, (xMid, yMid - size), (xMid, yMid + size), color, thickness)
+            
 
         cv.putText(annotated_image, "Performing Object Detection",
         (0, 25), cv.FONT_HERSHEY_DUPLEX,
@@ -286,7 +303,7 @@ class ObjectDetectorYOLO():
 ############################################################################
 
 if __name__ == "__main__":
-    testModel = ObjectDetectorYOLO(modelPath="runs/detect/train5/weights/best.pt")
+    testModel = ObjectDetectorYOLO()
     video = cv.VideoCapture(0)
     if not video.isOpened():
         print("Error opening camera")

@@ -21,7 +21,8 @@ def visualise(frame,result):
         return annotatedImage
 
 if __name__ == "__main__":
-    testModel = YOLO(model = "runs/detect/train6/weights/best.pt")
+    testModel = YOLO(model = "runs/detect/train6/weights/best.pt") 
+    print(testModel.names)
     video = cv.VideoCapture(0)
     if not video.isOpened():
         print("Error opening camera")
