@@ -74,6 +74,10 @@ def visualizerVideo(filename: str, cameraProperties: list,  dateStr: str = "", t
         img = vis.capture_screen_float_buffer(False)
         img_np = (np.asarray(img) * 255).astype(np.uint8)
         img_bgr = cv.cvtColor(img_np, cv.COLOR_RGB2BGR)
+        
+        cv.putText(img_bgr, f"Single Channel Pippette",
+        (0, 25), cv.FONT_HERSHEY_DUPLEX,
+        FONT_SIZE/2, (0,0,0), FONT_THICKNESS, cv.LINE_AA)
 
         cv.putText(img_bgr, f"Roll: {round(data['roll'],2)}, Pitch: {round(data['pitch'],2)}, Button Pressed: {bool(data['button'])}",
         (0, 50), cv.FONT_HERSHEY_DUPLEX,
