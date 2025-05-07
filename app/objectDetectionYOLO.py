@@ -12,6 +12,7 @@ from ultralytics import YOLO
 import numpy as np
 import cv2 as cv
 from result import Result
+import random
 
 class ObjectDetectorYOLO():
     ############################
@@ -165,15 +166,24 @@ class ObjectDetectorYOLO():
         result = analysis.result
         boxes = result.boxes
         cls = result.boxes.cls
+        size = 6
+        thickness = 1
 
         for i, box in enumerate(boxes.xyxy):  
+            color = (random.randint(0,255), random.randint(0,255), random.randint(0,255))
             className = result[0].names[int(cls[i])]
             xB = int(box[2])
             xA = int(box[0])
             yB = int(box[3])
             yA = int(box[1])
-            cv.rectangle(annotated_image, (xA, yA), (xB, yB), (0, 255, 0), 2)
-            cv.putText(annotated_image, className, (xA,yA),fontFace = cv.FONT_HERSHEY_COMPLEX, fontScale = 1, color = (250,225,100))
+            xMid = int((xA + xB)/2)
+            yMid = int((yA + yB)/2)
+
+            # Horizontal line
+            cv.line(annotated_image, (xMid + size, yMid + size), (xMid - size, yMid - size), color, thickness)
+            # Vertical line
+            cv.line(annotated_image, (xMid + size, yMid - size), (xMid - size, yMid + size), color, thickness)
+            cv.putText(annotated_image, className, (xA,yA), fontFace = cv.FONT_HERSHEY_COMPLEX, fontScale = 1, color = color)
 
         cv.putText(annotated_image, "Performing Object Detection",
         (0, 25), cv.FONT_HERSHEY_DUPLEX,
