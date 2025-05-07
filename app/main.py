@@ -559,8 +559,8 @@ class processVideoScreen(ctk.CTkFrame):
 
     def processVideo(self):
         processedVideoList = ["","","","",""]
-        statistics = ["","","","",""]
         self.count = 0
+        textFile = open(f"video/{self.dateStr}/final/note.txt", "a")
 
         def sanitiseCheck(videoName: str, index: int):
             footage = cv.VideoCapture(videoName)
@@ -602,7 +602,11 @@ class processVideoScreen(ctk.CTkFrame):
             coverage = mask.calculateMaskCoverage()
             videoWriter.release()
             processedVideoList[index] = processVideoName
-            statistics[index] = coverage
+
+            if index == 0:
+                textFile.write(f"Your initial sanitiation had a total of {coverage}% coverage.")
+            else:
+                textFile.write(f"Your final sanitiation had a total of {coverage}% coverage.")
 
         def materialCheck(videoName: str, index: int):
             footage = cv.VideoCapture(videoName)
@@ -627,7 +631,6 @@ class processVideoScreen(ctk.CTkFrame):
             footage.release()
             videoWriter.release()
             processedVideoList[index] = processVideoName
-            statistics[index] = materials
 
         def emptyCheck(videoName: str, index: int):
             footage = cv.VideoCapture(videoName)
@@ -652,7 +655,6 @@ class processVideoScreen(ctk.CTkFrame):
             footage.release()
             videoWriter.release()
             processedVideoList[index] = processVideoName
-            statistics[index] = emptyStatus
 
         def toolUsageCheck(videoName: str, index: int):
             footage = cv.VideoCapture(videoName)
@@ -720,7 +722,6 @@ class processVideoScreen(ctk.CTkFrame):
             footage.release()
             videoWriter.release()
             processedVideoList[index] = processVideoName
-            statistics[index] = handsRemovedCount
 
             with open(self.master.toolData, mode="r", newline='') as file:
                 allData = list(csv.DictReader(file))  # Read all rows into a list
@@ -748,8 +749,6 @@ class processVideoScreen(ctk.CTkFrame):
 
         self.master.toolData = toolVideoName
         self.master.videoName = processedVideoList
-
-        [self.startSanitisation, self.correctMaterials, self.handRemovals, self.emptySpace, self.endSanitisation] = statistics
 
         self.playButton.configure(text = "Play Video")         
         self.playButton.configure(command = self.playVideo) 
