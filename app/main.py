@@ -14,6 +14,7 @@ from datetime import datetime
 import os
 from serial_read_sample import read_hub_serial
 import csv
+from visualizer import visualizerVideo
 
 def convertCVtoPIL(frame):
     """Function to convert from openCV array to PIL array
@@ -77,6 +78,7 @@ class app(ctk.CTk):
 
         # Results interpreted from most recent recording
         self.videoName = [] 
+        self.toolData = ""
 
         # Show loading menu
         self.display = menuFrame(self)
@@ -243,6 +245,38 @@ class recordScreen(ctk.CTkFrame):
         except:
             pass
 
+
+        file = open(f"{dateStr}/raw/data.csv", mode='w', newline='')
+        dataWriter = csv.DictWriter(file, fieldnames=["RollF","PitchF","Button"])
+        
+        def serial2Dict(serialString: str):
+            """Function to convert from the string outputted from the Arduino into a dictionary for CSV saving.
+
+            Args:
+                serialString (str): String from Arduino
+
+            Returns:
+                dict: Dictionary explaining what string was
+            """
+            label, data = serialString.split(":")
+            roll, pitch, button = data.split("/")
+            row = {
+                "RollF":roll,
+                "PitchF":pitch,
+                "Button":button
+            }
+            return row
+        
+        def toolSampler(csvWriter):
+            """Function that will sample the position of an object and write to a dictionary
+
+            Args:
+                csvWriter (csv.DictWriter): CSV file that the data will be written into
+            """
+            string = read_hub_serial()
+            strDict = serial2Dict(string)
+            csvWriter.writerow(strDict)
+
         # Step 1: Beginning Sanitisation
         videoWriter, videoName = camera.createVideoWriter(function=f"{dateStr}/raw/sanitise", cameraProperties=self.master.cameraProperties)
         self.recordButton.configure(command = self.endVideo)
@@ -263,7 +297,7 @@ class recordScreen(ctk.CTkFrame):
             ret, frame = self.master.cap.read()
             if ret:
                 videoWriter.write(frame)
-
+                toolSampler(dataWriter)
                 framePIL = convertCVtoPIL(frame)
                 
                 self.cameraFrame.create_image(0, 0, anchor=tk.NW, image=framePIL)
@@ -301,7 +335,7 @@ class recordScreen(ctk.CTkFrame):
             ret, frame = self.master.cap.read()
             if ret:
                 videoWriter.write(frame)
-
+                toolSampler(dataWriter)
                 framePIL = convertCVtoPIL(frame)
                 
                 self.cameraFrame.create_image(0, 0, anchor=tk.NW, image=framePIL)
@@ -330,26 +364,6 @@ class recordScreen(ctk.CTkFrame):
             print("AHHHHHHHHHHHH")
             exit()
 
-        file = open(f"{dateStr}/raw/data.csv", mode='w', newline='')
-        writer = csv.DictWriter(file, fieldnames=["RollF","PitchF","Button"])
-        
-        def serial2Dict(serialString: str):
-            """Function to convert from the string outputted from the Arduino into a dictionary for CSV saving.
-
-            Args:
-                serialString (str): String from Arduino
-
-            Returns:
-                dict: Dictionary explaining what string was
-            """
-            label, data = serialString.split(":")
-            roll, pitch, button = data.split("/")
-            row = {
-                "RollF":roll,
-                "PitchF":pitch,
-                "Button":button
-            }
-            return row
 
 
         print("Start recording tool usage")
@@ -362,16 +376,12 @@ class recordScreen(ctk.CTkFrame):
             ret, frame = self.master.cap.read()
             if ret:
                 videoWriter.write(frame)
-                
+                toolSampler(dataWriter)
                 framePIL = convertCVtoPIL(frame)
                 
                 self.cameraFrame.create_image(0, 0, anchor=tk.NW, image=framePIL)
                 self.cameraFrame.image = framePIL
-                string = read_hub_serial()
 
-                strDict = serial2Dict(string)
-
-                writer.writerow(strDict)
                 self.update()
                 # time.sleep(1/30)
                 count += 1
@@ -405,7 +415,7 @@ class recordScreen(ctk.CTkFrame):
             ret, frame = self.master.cap.read()
             if ret:
                 videoWriter.write(frame)
-
+                toolSampler(dataWriter)
                 framePIL = convertCVtoPIL(frame)
                 
                 self.cameraFrame.create_image(0, 0, anchor=tk.NW, image=framePIL)
@@ -443,7 +453,7 @@ class recordScreen(ctk.CTkFrame):
             ret, frame = self.master.cap.read()
             if ret:
                 videoWriter.write(frame)
-
+                toolSampler(dataWriter)
                 framePIL = convertCVtoPIL(frame)
                 
                 self.cameraFrame.create_image(0, 0, anchor=tk.NW, image=framePIL)
@@ -460,6 +470,8 @@ class recordScreen(ctk.CTkFrame):
 
         videoWriter.release()
         self.master.videoName.append(videoName)
+        self.master.toolData = f"{dateStr}/raw/data.csv"
+        file.close()
         self.master.displayProcessVideo(self.no, dateStr)
         self.destroy()
 
@@ -710,6 +722,8 @@ class processVideoScreen(ctk.CTkFrame):
         sanitiseCheck(self.master.videoName[4], 4)
         print("Finished processing sanitisation")
 
+        visualizerVideo(self.master.toolData, self.master.cameraProperties,self.dateStr)
+        print("Finished processing tool use")
 
         print("Finished all processing")
 
