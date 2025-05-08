@@ -673,15 +673,15 @@ class processVideoScreen(ctk.CTkFrame):
         def toolUsageCheck(videoName: str, index: int):
             footage = cv.VideoCapture(videoName)
             videoWriter, processVideoName = camera.createVideoWriter(f"{self.dateStr}/process/{index}", self.master.cameraProperties)
-            handResultList = []
-            objectResultList = []
+            handResultList = [] # During this section, need to measure both hands and objects
+            objectResultList = [] # During this section, need to measure both hands and objects
 
             if self.usage == 0:
                 tool = 'Single Channel Pipettor'
             elif self.usage == 1:
                 tool = 'Pipette Controller'
 
-            while True:
+            while True: # Do first pass through of detections
                 ret, frame = footage.read()
 
                 if ret == True:
@@ -697,7 +697,7 @@ class processVideoScreen(ctk.CTkFrame):
                     break
 
             footage.release()
-            handResultList = self.master.handDetector.smoothHandLandmarks(handResultList)
+            handResultList = self.master.handDetector.smoothHandLandmarks(handResultList) # Smooth the hands
             handResultList = iter(handResultList) # Need an iterator for results
 
             objectResultList = iter(objectResultList) # Need an iterator for results
@@ -708,39 +708,28 @@ class processVideoScreen(ctk.CTkFrame):
             prevResultHand = None
             maxSpeed = 0
             
-            while True:
+            while True: # Do second pass to do annotations and get speed.
                 ret, frame = footage.read()
 
                 if ret == True:
                     resultHand = next(handResultList)
                     resultObject = next(objectResultList)
 
-                    if prevResultHand:
+                    if prevResultHand: # Get the speed of hand
                         speed = self.master.handLandmarker.getHandSpeed(prevResultHand.result, resultHand.result)
-                        if maxSpeed > speed:
+                        if maxSpeed < speed:
                             maxSpeed = speed
                     
                     annotatedFrame = self.master.handDetector.draw_landmarks_on_image(frame, resultHand)
-                    annotatedFrame, found = self.master.objectDetector.visualiseSpecificItem(annotatedFrame, resultObject, tool)
+                    annotatedFrame, _ = self.master.objectDetector.visualiseSpecificItem(annotatedFrame, resultObject, tool)
                     
-                    # if len(resultHand.result.handedness) < prevHandCount or not found:
-                    #     handsRemovedCount += 1
-
-                    # cv.putText(annotatedFrame, f"Analysing {tool} Usage",
-                    # (0, 25), cv.FONT_HERSHEY_DUPLEX,
-                    # ObjectDetectorYOLO.FONT_SIZE, (0,0,0), ObjectDetectorYOLO.FONT_THICKNESS, cv.LINE_AA)
-
-                    # cv.putText(annotatedFrame, f"Number of times hands have been removed: {handsRemovedCount}",
-                    # (0, 50), cv.FONT_HERSHEY_DUPLEX,
-                    # ObjectDetectorYOLO.FONT_SIZE/2, (0,0,0), ObjectDetectorYOLO.FONT_THICKNESS, cv.LINE_AA)
-
                     videoWriter.write(annotatedFrame)
                     prevHandCount = len(resultHand.result.handedness)
 
                 elif ret == False:
                     break
 
-            badSpeed = 80
+            badSpeed = 80 # Speed which we deem to be to fast; in cm/s
 
             if maxSpeed < badSpeed:
                 textFile.write(f"You had a max speed of had a total of {maxSpeed} cm/s, which is below the recommended hand speed of {badSpeed} cm/s. Great job!")
