@@ -507,17 +507,12 @@ class processVideoScreen(ctk.CTkFrame):
         self.usage = usage
         self.dateStr = dateStr
 
-        # Statistics
-        self.startSanitisation = 0
-        self.handRemovals = 0
-        self.correctMaterials = False
-        self.emptySpace = False
-        self.endSanitisation = 0
+        # When to analyze tools
         self.toolSampleRange = self.master.toolSampleRange
 
         # Graphics
         self.grid_columnconfigure(0, weight = 1)
-        self.grid_columnconfigure(1, weight = 0)
+        self.grid_columnconfigure(1, weight = 1)
         self.grid_rowconfigure(0, weight = 0)
         self.grid_rowconfigure(1, weight = 1) 
         self.grid_rowconfigure(2, weight = 0) 
@@ -541,19 +536,14 @@ class processVideoScreen(ctk.CTkFrame):
 
         self.playButton = ctk.CTkButton(self, text = "Process video", command = self.processVideo)
         self.playButton.grid(row = 2, columnspan = 2, column = 0, pady=10, padx=10, sticky = "nsew")
-
+       
+        # Statistics frame
         self.statistics = ctk.CTkFrame(self)
         self.statistics.grid(row = 1, column = 1, pady=10, padx=10, sticky = "nsew")
-
-        # Statistics frame
-        self.statisticsCoverage = ctk.CTkLabel(self.statistics, text = f"Percentage workspace sanitised: {self.startSanitisation}%", font = ("Segoe UI", 10, "bold"))
-        self.statisticsCoverage.grid(row = 0, column = 0, pady=10, padx=10, sticky = "nsew")
-
-        self.statisticsHandRemoval = ctk.CTkLabel(self.statistics, text = f"Amount of times hands have been removed: {self.handRemovals}", font = ("Segoe UI", 10, "bold"))
-        self.statisticsHandRemoval.grid(row = 1, column = 0, pady=10, padx=10, sticky = "nsew")
-
-        self.statisticsCorrectMaterials = ctk.CTkLabel(self.statistics, text = f"Correct materials gathered: {self.correctMaterials}%", font = ("Segoe UI", 10, "bold"))
-        self.statisticsCorrectMaterials.grid(row = 2, column = 0, pady=10, padx=10, sticky = "nsew")
+        self.statistics.pack_propagate(False)
+        
+        self.details = ctk.CTkLabel(self.statistics, text="", wraplength=self.master.cameraProperties[0]-50, justify="left")
+        self.details.grid(row=0,column=0, pady = 10, padx = 10, sticky = "nsew")
 
         self.update()
 
@@ -635,7 +625,7 @@ class processVideoScreen(ctk.CTkFrame):
             neededItems = dict()
             neededItems["Single Channel Pipettor"] = 1
             neededItems['Cell Culture Plate - 24'] = 1
-            
+
             missingItems, missingBool = self.master.objectDetector.checkCorrectItems(items, neededItems) # Check
             
             if missingBool:
@@ -742,12 +732,12 @@ class processVideoScreen(ctk.CTkFrame):
 
             badSpeed = 80 # Speed which we deem to be too fast; in cm/s
             if maxSpeed < badSpeed:
-                textFile.write(f"You had a max speed of had a total of {maxSpeed} cm/s, which is below the recommended hand speed of {badSpeed} cm/s. Great job!")
+                textFile.write(f"You had a max speed of had a total of {maxSpeed} cm/s, which is below the recommended hand speed of {badSpeed} cm/s. Great job!\t")
             
             else:
-                textFile.write(f"You had a max speed of had a total of {maxSpeed} cm/s, which reached beyond the recommended hand speed of {badSpeed} cm/s.")
+                textFile.write(f"You had a max speed of had a total of {maxSpeed} cm/s, which reached beyond the recommended hand speed of {badSpeed} cm/s.\t")
 
-            textFile.write(f"You removed your hands a total of {handsRemovalCount}")
+            textFile.write(f"You removed your hands a total of {handsRemovalCount}\t")
 
             footage.release()
             videoWriter.release() 
@@ -813,7 +803,7 @@ class processVideoScreen(ctk.CTkFrame):
         self.titleLabel.configure(text = "Playing video")
         self.update()
 
-        cameraProperties = self.master.cameraProperties
+        cameraProperties = self.master.cameraProperties.copy()
         cameraProperties[0] = 2 * cameraProperties[0]
 
         videoWriter, videoName = camera.createVideoWriter(f"{self.dateStr}/final/final", cameraProperties)
@@ -822,6 +812,9 @@ class processVideoScreen(ctk.CTkFrame):
         toolFootage = cv.VideoCapture(self.master.toolData)
         if not toolFootage.isOpened():
             print("pain")
+
+        notes = open(f"video/{self.dateStr}/final/note.txt", "r")
+        noteAll = ""
 
         for video in self.master.videoName:
             camFootage = cv.VideoCapture(video)
@@ -846,9 +839,13 @@ class processVideoScreen(ctk.CTkFrame):
                         self.update()
 
                     if retCam == False or cv.waitKey(1) == ord('q'):
-                        break
-                
+                        break    
             camFootage.release()
+            note = notes.readline()
+            splitNote = note.replace('\t','\n\n')
+            noteAll = noteAll +'\n' + splitNote
+            self.details.configure(text = noteAll.strip())
+            self.update()
         
         toolFootage.release()
         videoWriter.release()
