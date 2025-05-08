@@ -278,10 +278,6 @@ class handLandmarker():
         detection_result = analysis.result
         handsDetected = len(analysis.result.handedness)
 
-        cv.putText(annotated_image, "Checking for hands",
-            (0, 25), cv.FONT_HERSHEY_DUPLEX,
-            handLandmarker.FONT_SIZE, handLandmarker.HANDEDNESS_TEXT_COLOR, handLandmarker.FONT_THICKNESS, cv.LINE_AA)
-
         if handsDetected > 0: # The following code was taken from above link
             hand_landmarks_list = detection_result.hand_landmarks
             handedness_list = detection_result.handedness
@@ -317,16 +313,19 @@ class handLandmarker():
                 # cv.putText(annotated_image, f"Confidence Level: {round(handedness[0].score, 3)}",
                 #     (text_x, text_y), cv.FONT_HERSHEY_DUPLEX,
                 #     handLandmarker.FONT_SIZE, handLandmarker.HANDEDNESS_TEXT_COLOR, handLandmarker.FONT_THICKNESS, cv.LINE_AA)
-        
+            cv.putText(annotated_image, "Hand Detection: Marking hand landmarks",
+            (0, 25), cv.FONT_HERSHEY_DUPLEX,
+            handLandmarker.FONT_SIZE/2, (0,0,0), handLandmarker.FONT_THICKNESS, cv.LINE_AA)
+
         elif analysis.status:
-            cv.putText(annotated_image, "A hand was removed!!!",
-            (0, 50), cv.FONT_HERSHEY_DUPLEX,
-            handLandmarker.FONT_SIZE/2, handLandmarker.HANDEDNESS_TEXT_COLOR, handLandmarker.FONT_THICKNESS, cv.LINE_AA)
+            cv.putText(annotated_image, "Hand Detection: A hand was removed!",
+            (0, 25), cv.FONT_HERSHEY_DUPLEX,
+            handLandmarker.FONT_SIZE/2, (0,0,0), handLandmarker.FONT_THICKNESS, cv.LINE_AA)
 
         else:
-            cv.putText(annotated_image, "No hands have been detected",
-            (0, 50), cv.FONT_HERSHEY_DUPLEX,
-            handLandmarker.FONT_SIZE/2, handLandmarker.HANDEDNESS_TEXT_COLOR, handLandmarker.FONT_THICKNESS, cv.LINE_AA)
+            cv.putText(annotated_image, "Hand Detection: No hands have been detected!",
+            (0, 25), cv.FONT_HERSHEY_DUPLEX,
+            handLandmarker.FONT_SIZE/2, (0,0,0), handLandmarker.FONT_THICKNESS, cv.LINE_AA)
         
         return annotated_image
 

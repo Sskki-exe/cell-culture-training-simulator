@@ -151,9 +151,15 @@ class ObjectDetectorYOLO():
                 cv.line(annotated_image, (xMid + size, yMid - size), (xMid - size, yMid + size), color, thickness)
                 cv.putText(annotated_image, className, (xA,yA), fontFace = cv.FONT_HERSHEY_COMPLEX, fontScale = 1, color = color)
         
-        # cv.putText(annotated_image, "Performing Object Detection",
-        # (0, 25), cv.FONT_HERSHEY_DUPLEX,
-        # ObjectDetectorYOLO.FONT_SIZE, ObjectDetectorYOLO.HANDEDNESS_TEXT_COLOR, ObjectDetectorYOLO.FONT_THICKNESS, cv.LINE_AA)
+        if found:
+            cv.putText(annotated_image, f"Object Detection: {itemName} found",
+            (0, 50), cv.FONT_HERSHEY_DUPLEX,
+            ObjectDetectorYOLO.FONT_SIZE, ObjectDetectorYOLO.HANDEDNESS_TEXT_COLOR, ObjectDetectorYOLO.FONT_THICKNESS, cv.LINE_AA)
+        
+        else:
+            cv.putText(annotated_image, f"Object Detection: {itemName} not found",
+            (0, 50), cv.FONT_HERSHEY_DUPLEX,
+            ObjectDetectorYOLO.FONT_SIZE, ObjectDetectorYOLO.HANDEDNESS_TEXT_COLOR, ObjectDetectorYOLO.FONT_THICKNESS, cv.LINE_AA)
         
         # cv.putText(annotated_image, f"Found {itemName}: {str(found)}",
         # (0, 50), cv.FONT_HERSHEY_DUPLEX,
