@@ -624,7 +624,7 @@ class handLandmarker():
             rightspeed = 0
 
         speed = max(leftspeed, rightspeed)
-        print(speed)
+        # print(speed)
         return speed
     
     ################################ Archaic Functions ############################################ 

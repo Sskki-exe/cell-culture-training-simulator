@@ -605,8 +605,10 @@ class processVideoScreen(ctk.CTkFrame):
 
             if index == 0:
                 textFile.write(f"Your initial sanitiation had a total of {coverage}% coverage.")
+                textFile.write("\n")
             else:
                 textFile.write(f"Your final sanitiation had a total of {coverage}% coverage.")
+                textFile.write("\n")
 
         def materialCheck(videoName: str, index: int):
             footage = cv.VideoCapture(videoName)
@@ -691,6 +693,8 @@ class processVideoScreen(ctk.CTkFrame):
             footage = cv.VideoCapture(videoName)
             handsRemovedCount = 0
             prevHandCount = 0
+            prevResultHand = None
+            maxSpeed = 0
             
             while True:
                 ret, frame = footage.read()
@@ -698,26 +702,39 @@ class processVideoScreen(ctk.CTkFrame):
                 if ret == True:
                     resultHand = next(handResultList)
                     resultObject = next(objectResultList)
+
+                    if prevResultHand:
+                        speed = self.master.handLandmarker.getHandSpeed(prevResultHand.result, resultHand.result)
+                        if maxSpeed > speed:
+                            maxSpeed = speed
                     
                     annotatedFrame = self.master.handDetector.draw_landmarks_on_image(frame, resultHand)
                     annotatedFrame, found = self.master.objectDetector.visualiseSpecificItem(annotatedFrame, resultObject, tool)
                     
-                    if len(resultHand.result.handedness) < prevHandCount or not found:
-                        handsRemovedCount += 1
+                    # if len(resultHand.result.handedness) < prevHandCount or not found:
+                    #     handsRemovedCount += 1
 
-                    cv.putText(annotatedFrame, f"Analysing {tool} Usage",
-                    (0, 25), cv.FONT_HERSHEY_DUPLEX,
-                    ObjectDetectorYOLO.FONT_SIZE, (0,0,0), ObjectDetectorYOLO.FONT_THICKNESS, cv.LINE_AA)
+                    # cv.putText(annotatedFrame, f"Analysing {tool} Usage",
+                    # (0, 25), cv.FONT_HERSHEY_DUPLEX,
+                    # ObjectDetectorYOLO.FONT_SIZE, (0,0,0), ObjectDetectorYOLO.FONT_THICKNESS, cv.LINE_AA)
 
-                    cv.putText(annotatedFrame, f"Number of times hands have been removed: {handsRemovedCount}",
-                    (0, 50), cv.FONT_HERSHEY_DUPLEX,
-                    ObjectDetectorYOLO.FONT_SIZE/2, (0,0,0), ObjectDetectorYOLO.FONT_THICKNESS, cv.LINE_AA)
+                    # cv.putText(annotatedFrame, f"Number of times hands have been removed: {handsRemovedCount}",
+                    # (0, 50), cv.FONT_HERSHEY_DUPLEX,
+                    # ObjectDetectorYOLO.FONT_SIZE/2, (0,0,0), ObjectDetectorYOLO.FONT_THICKNESS, cv.LINE_AA)
 
                     videoWriter.write(annotatedFrame)
                     prevHandCount = len(resultHand.result.handedness)
 
                 elif ret == False:
                     break
+
+            badSpeed = 80
+
+            if maxSpeed < badSpeed:
+                textFile.write(f"You had a max speed of had a total of {maxSpeed} cm/s, which is below the recommended hand speed of {badSpeed} cm/s. Great job!")
+            
+            else:
+                textFile.write(f"You had a max speed of had a total of {maxSpeed} cm/s, which reached beyond the recommended hand speed of {badSpeed} cm/s.")
 
             footage.release()
             videoWriter.release()
@@ -726,6 +743,11 @@ class processVideoScreen(ctk.CTkFrame):
             with open(self.master.toolData, mode="r", newline='') as file:
                 allData = list(csv.DictReader(file))  # Read all rows into a list
                 toolData = allData[self.toolSampleRange[0]:self.toolSampleRange[1]]     # Adjust for 0-based indexing
+            
+
+
+            textFile.write("\n")
+
 
         sanitiseCheck(self.master.videoName[0], 0)
         print("Finished processing starting sanitisation")
