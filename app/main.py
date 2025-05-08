@@ -568,7 +568,7 @@ class processVideoScreen(ctk.CTkFrame):
             
             resultList = []
 
-            while True:
+            while True: # Go through video and get initial positions
                 ret, frame = footage.read()
 
                 if ret == True:
@@ -580,13 +580,13 @@ class processVideoScreen(ctk.CTkFrame):
                     break
 
             footage.release()
-            resultList = self.master.handDetector.smoothHandLandmarks(resultList)
+            resultList = self.master.handDetector.smoothHandLandmarks(resultList) # Try to smooth results to prevent FN
             resultList = iter(resultList) # Need an iterator for results
 
             footage = cv.VideoCapture(videoName)
             
             mask = SanitisationMask(self.master.cameraProperties)
-            while True:
+            while True: # Annotate video with sanitation coverage.
                 ret, frame = footage.read()
 
                 if ret == True:
@@ -599,9 +599,9 @@ class processVideoScreen(ctk.CTkFrame):
             
             footage.release()
         
-            coverage = mask.calculateMaskCoverage()
+            coverage = mask.calculateMaskCoverage() # Get percentage
             videoWriter.release()
-            processedVideoList[index] = processVideoName
+            processedVideoList[index] = processVideoName # Store video name
 
             if index == 0:
                 textFile.write(f"Your initial sanitiation had a total of {coverage}% coverage.")
@@ -613,22 +613,32 @@ class processVideoScreen(ctk.CTkFrame):
         def materialCheck(videoName: str, index: int):
             footage = cv.VideoCapture(videoName)
             videoWriter, processVideoName = camera.createVideoWriter(f"{self.dateStr}/process/{index}", self.master.cameraProperties)
+            # itemsList = ["","","","",""] # I think there are issues with sometimes detection not occuring, so I might have a buffer of items just incase
 
-            while True:
+            while True: # Annotate video with items detected
                 ret, frame = footage.read()
 
                 if ret == True:
                     result = self.master.objectDetector.detect(frame, int(time.time()))
-                    annotatedFrame, items, _ = self.master.objectDetector.visualiseAll(frame,result)
+                    annotatedFrame, items, _ = self.master.objectDetector.visualiseAll(frame,result) # Mark all items in Frame.
                     videoWriter.write(annotatedFrame)
+
+                    # For buffering
+                    # itemsList[0:4] = itemsList[1:]
+                    # itemsList[4] = items
 
                 elif ret == False:
                     break
 
-            if items:
-                materials = True
+            missingItems, missingBool = self.master.objectDetector.checkCorrectItems(items, neededItems) # Check
+            
+            if missingBool:
+                textFile.write(f"You got all the materials you needed!")
+                textFile.write("\n")
             else:
-                materials = False
+                textFile.write(f"Unfortunately, you didn't get all the items you needed. You are still missing: ")
+                textFile.write(', '.join(f"{key}: {value}" for key, value in missingItems.items()))
+                textFile.write("\n")
                 
             footage.release()
             videoWriter.release()
@@ -637,7 +647,7 @@ class processVideoScreen(ctk.CTkFrame):
         def emptyCheck(videoName: str, index: int):
             footage = cv.VideoCapture(videoName)
             videoWriter, processVideoName = camera.createVideoWriter(f"{self.dateStr}/process/{index}", self.master.cameraProperties)
-
+            
             while True:
                 ret, frame = footage.read()
 
@@ -649,10 +659,12 @@ class processVideoScreen(ctk.CTkFrame):
                 elif ret == False:
                     break
 
-            if itemCount != 0:
-                emptyStatus = False
+            if itemCount == 0:
+                textFile.write(f"Great job! You fully emptied the space.")
+                textFile.write("\n")
             else:
-                emptyStatus = True
+                textFile.write(f"Unfortunately, you didn't take out all the items; you left {itemCount} items behind. Remember to remove all items before sanitising at the end")
+                textFile.write("\n")
 
             footage.release()
             videoWriter.release()

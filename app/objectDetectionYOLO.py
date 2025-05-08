@@ -264,7 +264,7 @@ class ObjectDetectorYOLO():
     #         return self.result.boxes.xyxy.numpy()[foundObjects]
     #         # TODO: figure out how to return coordinates of all instances of specific object
     
-    def checkCorrectItems(self, analysis: Result, neededItems: dict) -> dict:
+    def checkCorrectItems(self, currentItems: dict, neededItems: dict) -> dict:
         """ Determines what items (and how many) are missing from the current frame
 
         Args:
@@ -273,18 +273,17 @@ class ObjectDetectorYOLO():
         Returns:
             missingItems (dict): Dictionary of missing items and quantities left need for them
         """
-        countDict = self.count(analysis)
         missingItems = dict()
         for item in neededItems:
             try:
-                currentAmount = countDict[item]
+                currentAmount = currentItems[item]
                 neededAmount = neededItems[item]
                 if currentAmount < neededAmount:
                     missingItems[item] = neededAmount - currentAmount
             except:
                 missingItems[item] = neededItems[item]
-        
-        return missingItems
+
+        return missingItems, bool(missingItems)
 
     def checkEmpty(self, resultList: list):
         """Checks to see when the frame is empty of consumables. Will return a list where elements represent the frames where it is empty.
