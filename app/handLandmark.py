@@ -587,21 +587,45 @@ class handLandmarker():
             elif hand[0].category_name == "Right":
                 currentRight = index
 
-        if not prevLeft and type(prevLeft) == type(currentLeft): 
+        if type(prevLeft)==int and type(prevLeft) == type(currentLeft): 
             # can compare speed in left hand
-            pass
+            worldPrev = prevResult.hand_landmarks[prevLeft][0]
+            worldPrev = self.convertNormalToImageCoord(worldPrev.x, worldPrev.y)
+            prevDepth = self.getDepth(prevResult.hand_landmarks[prevLeft])
+            prevWorld = prevDepth * np.linalg.inv(camera.K) @ np.array([[worldPrev[0]],[worldPrev[1]],[1]])
+
+            worldCurrent = currentResult.hand_landmarks[currentLeft][0]
+            worldCurrent = self.convertNormalToImageCoord(worldCurrent.x, worldCurrent.y)
+            currentDepth = self.getDepth(currentResult.hand_landmarks[currentLeft])
+            currentWorld = currentDepth * np.linalg.inv(camera.K) @ np.array([[worldCurrent[0]],[worldCurrent[1]],[1]])
+
+            leftDist = np.linalg.norm(currentWorld-prevWorld)
+            leftspeed = leftDist*30
 
         else:
             leftspeed = 0
 
-        if not prevRight and type(prevRight) == type(currentRight): 
+        if type(prevRight)==int and type(prevRight) == type(currentRight): 
             # can compare speed in right hand
-            pass
+            worldPrev = prevResult.hand_landmarks[prevRight][0]
+            worldPrev = self.convertNormalToImageCoord(worldPrev.x, worldPrev.y)
+            prevDepth = self.getDepth(prevResult.hand_landmarks[prevRight])
+            prevWorld = prevDepth * np.linalg.inv(camera.K) @ np.array([[worldPrev[0]],[worldPrev[1]],[1]])
+
+            worldCurrent = currentResult.hand_landmarks[currentRight][0]
+            worldCurrent = self.convertNormalToImageCoord(worldCurrent.x, worldCurrent.y)
+            currentDepth = self.getDepth(currentResult.hand_landmarks[currentRight])
+            currentWorld = currentDepth * np.linalg.inv(camera.K) @ np.array([[worldCurrent[0]],[worldCurrent[1]],[1]])
+
+            rightDist = np.linalg.norm(currentWorld-prevWorld)
+            rightspeed = rightDist*30
         
         else:
             rightspeed = 0
 
-        return max(leftspeed, rightspeed)
+        speed = max(leftspeed, rightspeed)
+        print(speed)
+        return speed
     
     ################################ Archaic Functions ############################################ 
     # def analyseVideo(self, videoName: str):
@@ -651,13 +675,18 @@ if __name__ == "__main__":
     testMask = SanitisationMask(cameraProperties)
     handDetector = handLandmarker(modelPath="hand_landmarker.task", cameraProperties = cameraProperties)
     count = 0
+    ret, frame = cap.read()
+    currentResult = handDetector.detect(frame, count)
+
 
     while True:
         ret, frame = cap.read()
+        count += 1
         if ret:
-            result = handDetector.detect(frame, count)
-            annotatedFrame = handDetector.paintImage(frame,result,testMask)
-            cv.imshow("frame", annotatedFrame)
+            prevResult = currentResult
+            currentResult = handDetector.detect(frame, count)
+            cv.imshow("frame", frame)
+            speed = handDetector.getHandSpeed(prevResult.result, currentResult.result)
 
             if cv.waitKey(1) == ord("q"):
                 break
