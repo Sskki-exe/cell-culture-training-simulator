@@ -734,24 +734,41 @@ class processVideoScreen(ctk.CTkFrame):
                 elif ret == False:
                     break
 
-            badSpeed = 80 # Speed which we deem to be to fast; in cm/s
-
+            badSpeed = 80 # Speed which we deem to be too fast; in cm/s
             if maxSpeed < badSpeed:
                 textFile.write(f"You had a max speed of had a total of {maxSpeed} cm/s, which is below the recommended hand speed of {badSpeed} cm/s. Great job!")
             
             else:
                 textFile.write(f"You had a max speed of had a total of {maxSpeed} cm/s, which reached beyond the recommended hand speed of {badSpeed} cm/s.")
 
+            textFile.write(f"You removed your hands a total of {handsRemovalCount}")
+
             footage.release()
-            videoWriter.release()
+            videoWriter.release() 
             processedVideoList[index] = processVideoName
 
+            # Finish analysing video, now analysing tool
             with open(self.master.toolData, mode="r", newline='') as file:
-                allData = list(csv.DictReader(file))  # Read all rows into a list
-                toolData = allData[self.toolSampleRange[0]:self.toolSampleRange[1]]     # Adjust for 0-based indexing
+                allData = list(csv.DictReader(file, fieldnames = ['roll','pitch','button']))  # Read all rows into a list
+                toolData = allData[self.toolSampleRange[0]:self.toolSampleRange[1]]  # Adjust for 0-based indexing
             
+            # Note: 210 - 330 is okay curl
+            badUseCount = 0
+            badAngle = False # Bool that resets after every falling edge
 
+            for sample in toolData:
+                if sample["button"] == 1: # Check if button is pressed aka liquid is being picked up/dropped
+                    rollGood = 210 <= sample["roll"] <= 260  or 280 <= sample["roll"] <= 330 # check if either pitch or roll is okay
+                    pitchGood = 210 <= sample["pitch"] <= 260 or 280 <= sample["pitch"] <= 330 # check if either pitch or roll is okay
+                    if not (rollGood or pitchGood): # if neither is good:
+                        if not badAngle: # no point counting it during a long press
+                            badAngle = True
+                            badUseCount += 1 # Increase baduse count by 1
 
+                else:
+                    badAngle = False # Reset after falling edge
+
+            textFile.write(f"When using the {self.usage}, you held it at a bad angle {badUseCount} times. Make sure to hold it at")
             textFile.write("\n")
 
 
