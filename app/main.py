@@ -631,7 +631,11 @@ class processVideoScreen(ctk.CTkFrame):
 
                 elif ret == False:
                     break
-
+            # Hardcoded beyond belief
+            neededItems = dict()
+            neededItems["Single Channel Pipettor"] = 1
+            neededItems['Cell Culture Plate - 24'] = 1
+            
             missingItems, missingBool = self.master.objectDetector.checkCorrectItems(items, neededItems) # Check
             
             if missingBool:
