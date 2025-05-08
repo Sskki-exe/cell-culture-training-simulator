@@ -58,7 +58,7 @@ class app(ctk.CTk):
         self.cap = cv.VideoCapture(0)
         if not self.cap.isOpened:
             print("Camera brokey")
-            exit()
+            self.destroy()
 
         # Loading Screen 2
         self.display = loadingFrame(self, loadingImageStr="loadingGraphics/2.JPG")
@@ -558,6 +558,8 @@ class processVideoScreen(ctk.CTkFrame):
         self.update()
 
     def processVideo(self):
+        """Function to process all the videos made.
+        """
         processedVideoList = ["","","","",""]
         self.count = 0
         textFile = open(f"video/{self.dateStr}/final/note.txt", "a")
@@ -771,7 +773,7 @@ class processVideoScreen(ctk.CTkFrame):
             textFile.write(f"When using the {self.usage}, you held it at a bad angle {badUseCount} times. Make sure to hold it at")
             textFile.write("\n")
 
-
+        # Order of video check.
         sanitiseCheck(self.master.videoName[0], 0)
         print("Finished processing starting sanitisation")
 
