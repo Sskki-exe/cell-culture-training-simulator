@@ -592,7 +592,7 @@ class processVideoScreen(ctk.CTkFrame):
                 if ret == True:
                     result = next(resultList)
                     annotatedFrame = self.master.handDetector.paintImage(frame, result, mask)
-                    videoWriter.write(annotatedFrame)
+                    videoWriter.write(annotatedFrame) # Save annotated frame into video
 
                 elif ret == False:
                     break
@@ -621,7 +621,7 @@ class processVideoScreen(ctk.CTkFrame):
                 if ret == True:
                     result = self.master.objectDetector.detect(frame, int(time.time()))
                     annotatedFrame, items, _ = self.master.objectDetector.visualiseAll(frame,result) # Mark all items in Frame.
-                    videoWriter.write(annotatedFrame)
+                    videoWriter.write(annotatedFrame) # Save annotated frame into video
 
                     # For buffering
                     # itemsList[0:4] = itemsList[1:]
@@ -654,7 +654,7 @@ class processVideoScreen(ctk.CTkFrame):
                 if ret == True:
                     result = self.master.objectDetector.detect(frame, int(time.time()))
                     annotatedFrame, _, itemCount = self.master.objectDetector.visualiseAll(frame,result)
-                    videoWriter.write(annotatedFrame)
+                    videoWriter.write(annotatedFrame) # Save annotated frame into video
 
                 elif ret == False:
                     break
@@ -703,28 +703,33 @@ class processVideoScreen(ctk.CTkFrame):
             objectResultList = iter(objectResultList) # Need an iterator for results
 
             footage = cv.VideoCapture(videoName)
-            handsRemovedCount = 0
+            handsRemovalCount = 0
             prevHandCount = 0
             prevResultHand = None
             maxSpeed = 0
             
-            while True: # Do second pass to do annotations and get speed.
+            while True: # Do second pass to do annotations and do analysis.
                 ret, frame = footage.read()
 
                 if ret == True:
                     resultHand = next(handResultList)
                     resultObject = next(objectResultList)
 
-                    if prevResultHand: # Get the speed of hand
+                    annotatedFrame = self.master.handDetector.draw_landmarks_on_image(frame, resultHand) # Do annotations
+                    annotatedFrame, _ = self.master.objectDetector.visualiseSpecificItem(annotatedFrame, resultObject, tool)
+
+                    curHandCount = len(resultHand.result.handedness) # Count the number of hands
+                    if prevHandCount > curHandCount:
+                        handsRemovalCount += 1
+                    
+                    prevHandCount = curHandCount
+
+                    if prevResultHand: # Get the speed of the hands
                         speed = self.master.handLandmarker.getHandSpeed(prevResultHand.result, resultHand.result)
                         if maxSpeed < speed:
                             maxSpeed = speed
                     
-                    annotatedFrame = self.master.handDetector.draw_landmarks_on_image(frame, resultHand)
-                    annotatedFrame, _ = self.master.objectDetector.visualiseSpecificItem(annotatedFrame, resultObject, tool)
-                    
-                    videoWriter.write(annotatedFrame)
-                    prevHandCount = len(resultHand.result.handedness)
+                    videoWriter.write(annotatedFrame) # Save annotated frame into video
 
                 elif ret == False:
                     break
