@@ -634,7 +634,7 @@ class processVideoScreen(ctk.CTkFrame):
             else:
                 textFile.write(f"Unfortunately, you didn't get all the items you needed. You are still missing: ")
                 textFile.write(', '.join(f"{key}: {value}" for key, value in missingItems.items()))
-                textFile.write("\n")
+                textFile.write(".\n")
                 
             footage.release()
             videoWriter.release()
@@ -659,7 +659,7 @@ class processVideoScreen(ctk.CTkFrame):
                 textFile.write(f"Great job! You fully emptied the space.")
                 textFile.write("\n")
             else:
-                textFile.write(f"Unfortunately, you didn't take out all the items; you left {itemCount} items behind. Remember to remove all items before sanitising at the end")
+                textFile.write(f"Unfortunately, you didn't take out all the items; you left {itemCount} items behind. Remember to remove all items before sanitising at the end.")
                 textFile.write("\n")
 
             footage.release()
@@ -737,7 +737,7 @@ class processVideoScreen(ctk.CTkFrame):
             else:
                 textFile.write(f"You had a max speed of had a total of {maxSpeed} cm/s, which reached beyond the recommended hand speed of {badSpeed} cm/s.\t")
 
-            textFile.write(f"You removed your hands a total of {handsRemovalCount}\t")
+            textFile.write(f"You removed your hands a total of {handsRemovalCount}\t times.")
 
             footage.release()
             videoWriter.release() 
@@ -764,7 +764,7 @@ class processVideoScreen(ctk.CTkFrame):
                 else:
                     badAngle = False # Reset after falling edge
 
-            textFile.write(f"When using the {self.usage}, you held it at a bad angle {badUseCount} times. Make sure to hold it at")
+            textFile.write(f"When using the {tool}, you held it at a bad angle {badUseCount} times. Make sure to hold it at a slight angle instead of vertically upwards to prevent contamination.")
             textFile.write("\n")
 
         # Order of video check.
