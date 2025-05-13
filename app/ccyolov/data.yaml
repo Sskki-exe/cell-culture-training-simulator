@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 18
+names: ['Cell Culture Plate - 24', 'Disposable Pasteur Pipette - Sealed', 'Micropipette Tip 10 uL', 'Micropipette Tip 1000 uL', 'Micropipette Tip 200 uL', 'Serelogical Pipet 1 mL', 'Serelogical Pipet 1 mL - Sealed', 'Serelogical Pipet 10 mL', 'Serelogical Pipet 10 mL - Sealed', 'Serelogical Pipet 2 mL', 'Serelogical Pipet 2 mL - Sealed', 'Serelogical Pipet 25 mL', 'Serelogical Pipet 25 mL - Sealed', 'Serelogical Pipet 5 mL', 'Serelogical Pipet 5 mL - Sealed', 'Serelogical Pipet 50 mL', 'Serelogical Pipet 50 mL - Sealed', 'Single Channel Pipettor']
+
+roboflow:
+  workspace: fyp-cell-culture
+  project: cell-culture-object-detection
+  version: 1
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/fyp-cell-culture/cell-culture-object-detection/dataset/1
