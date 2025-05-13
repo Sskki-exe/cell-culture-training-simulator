@@ -572,7 +572,8 @@ class handLandmarker():
         prevRight = False
         currentLeft = False
         currentRight = False
-        speed = 0 # Assume base line speed
+        speed = 0
+        speedx = 0 # Assume base line speed
 
         for index, hand in enumerate(prevResult.handedness): # Can assume only one user, so max two hands (one left, one right)
             if hand[0].category_name == "Left":
@@ -586,45 +587,80 @@ class handLandmarker():
             elif hand[0].category_name == "Right":
                 currentRight = index
 
+        # # With intrinsic matrix
+        # if type(prevLeft)==int and type(prevLeft) == type(currentLeft): 
+        #     # can compare speed in left hand
+        #     worldPrev = prevResult.hand_landmarks[prevLeft][0]
+        #     worldPrev = self.convertNormalToImageCoord(worldPrev.x, worldPrev.y)
+        #     prevDepth = self.getDepth(prevResult.hand_landmarks[prevLeft])
+        #     prevWorld = prevDepth * np.linalg.inv(camera.K) @ np.array([[worldPrev[0]],[worldPrev[1]],[1]])
+
+        #     worldCurrent = currentResult.hand_landmarks[currentLeft][0]
+        #     worldCurrent = self.convertNormalToImageCoord(worldCurrent.x, worldCurrent.y)
+        #     currentDepth = self.getDepth(currentResult.hand_landmarks[currentLeft])
+        #     currentWorld = currentDepth * np.linalg.inv(camera.K) @ np.array([[worldCurrent[0]],[worldCurrent[1]],[1]])
+
+        #     leftDist = np.linalg.norm(currentWorld-prevWorld)
+        #     leftspeed = leftDist*30
+
+        # else:
+        #     leftspeed = 0
+
+        # if type(prevRight)==int and type(prevRight) == type(currentRight): 
+        #     # can compare speed in right hand
+        #     worldPrev = prevResult.hand_landmarks[prevRight][0]
+        #     worldPrev = self.convertNormalToImageCoord(worldPrev.x, worldPrev.y)
+        #     prevDepth = self.getDepth(prevResult.hand_landmarks[prevRight])
+        #     prevWorld = prevDepth * np.linalg.inv(camera.K) @ np.array([[worldPrev[0]],[worldPrev[1]],[1]])
+
+        #     worldCurrent = currentResult.hand_landmarks[currentRight][0]
+        #     worldCurrent = self.convertNormalToImageCoord(worldCurrent.x, worldCurrent.y)
+        #     currentDepth = self.getDepth(currentResult.hand_landmarks[currentRight])
+        #     currentWorld = currentDepth * np.linalg.inv(camera.K) @ np.array([[worldCurrent[0]],[worldCurrent[1]],[1]])
+
+        #     print(prevWorld, currentWorld)
+
+        #     rightDist = np.linalg.norm(currentWorld-prevWorld)
+        #     rightspeed = rightDist*30
+        
+        # else:
+        #     rightspeed = 0
+
+        # speed = max(leftspeed, rightspeed)
+
+        # With world coordinates
+
         if type(prevLeft)==int and type(prevLeft) == type(currentLeft): 
             # can compare speed in left hand
-            worldPrev = prevResult.hand_landmarks[prevLeft][0]
-            worldPrev = self.convertNormalToImageCoord(worldPrev.x, worldPrev.y)
-            prevDepth = self.getDepth(prevResult.hand_landmarks[prevLeft])
-            prevWorld = prevDepth * np.linalg.inv(camera.K) @ np.array([[worldPrev[0]],[worldPrev[1]],[1]])
+            worldPrev = prevResult.hand_world_landmarks[prevLeft][0]
+            worldPrev = np.array([worldPrev.x,worldPrev.y,worldPrev.z])
 
-            worldCurrent = currentResult.hand_landmarks[currentLeft][0]
-            worldCurrent = self.convertNormalToImageCoord(worldCurrent.x, worldCurrent.y)
-            currentDepth = self.getDepth(currentResult.hand_landmarks[currentLeft])
-            currentWorld = currentDepth * np.linalg.inv(camera.K) @ np.array([[worldCurrent[0]],[worldCurrent[1]],[1]])
+            worldCurrent = currentResult.hand_world_landmarks[currentLeft][0]
+            worldCurrent = np.array([worldCurrent.x,worldCurrent.y,worldCurrent.z])
 
-            leftDist = np.linalg.norm(currentWorld-prevWorld)
-            leftspeed = leftDist*30
+            leftDist = np.linalg.norm(worldPrev-worldCurrent)
+            leftxspeed = leftDist*30
 
         else:
-            leftspeed = 0
+            leftxspeed = 0
 
         if type(prevRight)==int and type(prevRight) == type(currentRight): 
             # can compare speed in right hand
-            worldPrev = prevResult.hand_landmarks[prevRight][0]
-            worldPrev = self.convertNormalToImageCoord(worldPrev.x, worldPrev.y)
-            prevDepth = self.getDepth(prevResult.hand_landmarks[prevRight])
-            prevWorld = prevDepth * np.linalg.inv(camera.K) @ np.array([[worldPrev[0]],[worldPrev[1]],[1]])
+            worldPrev = prevResult.hand_world_landmarks[prevRight][0]
+            worldPrev = np.array([worldPrev.x,worldPrev.y,worldPrev.z])
 
-            worldCurrent = currentResult.hand_landmarks[currentRight][0]
-            worldCurrent = self.convertNormalToImageCoord(worldCurrent.x, worldCurrent.y)
-            currentDepth = self.getDepth(currentResult.hand_landmarks[currentRight])
-            currentWorld = currentDepth * np.linalg.inv(camera.K) @ np.array([[worldCurrent[0]],[worldCurrent[1]],[1]])
+            worldCurrent = currentResult.hand_world_landmarks[currentRight][0]
+            worldCurrent = np.array([worldCurrent.x,worldCurrent.y,worldCurrent.z])
 
-            rightDist = np.linalg.norm(currentWorld-prevWorld)
-            rightspeed = rightDist*30
+            rightDist = np.linalg.norm(worldPrev-worldCurrent)
+            rightxspeed = rightDist*30
         
         else:
-            rightspeed = 0
+            rightxspeed = 0
 
-        speed = max(leftspeed, rightspeed)
-        # print(speed)
-        return speed
+        speedx = max(leftxspeed, rightxspeed)
+
+        return speedx
     
     ################################ Archaic Functions ############################################ 
     # def analyseVideo(self, videoName: str):
