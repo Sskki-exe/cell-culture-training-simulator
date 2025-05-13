@@ -14,9 +14,12 @@ def read_hub_serial():
     # For simulation
     rollF = round(random.uniform(-90, 90), 2)     # Simulated roll in degrees
     pitchF = round(random.uniform(-90, 90), 2)    # Simulated pitch in degrees
-    button_state = random.choice([0, 1])          # 1 = pressed, 0 = not pressed
-    data = f"Pipette_1:{rollF}/{pitchF}/{button_state}"
-    return data # pipette1:
+    button_state1 = random.choice([0,1]) 
+    button_state2 = random.choice(['00', '01', '10']) 
+    data1 = f"Pipette_1:{rollF}/{pitchF}/{button_state1}+"
+    data2 = f"Aid_1:{rollF}/{pitchF}/{button_state2}"
+    data = data1 + data2
+    return data
 
 # Sample main loop
 if __name__ == "__main__":

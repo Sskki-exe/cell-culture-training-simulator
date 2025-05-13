@@ -3,6 +3,7 @@ import cv2 as cv
 import numpy as np
 import os
 import pyrender
+import random
 import trimesh
 import open3d as o3d
 from camera import createVideoWriter, getCameraProperties
@@ -13,16 +14,16 @@ FONT_SIZE = 1
 FONT_THICKNESS = 1
 HANDEDNESS_TEXT_COLOR = (88, 205, 54) # vibrant green
 
-def visualizer3dVideo(filename: str, cameraProperties: list, dateStr: str = "", test: bool = False):
+def visualizer3dSCPVideo(filename: str, cameraProperties: list, dateStr: str = "", test: bool = False):
     # Read the CSV file with transformation data
     dataCSV = pd.read_csv(filename, header=None)
-    dataCSV.columns = ['roll', 'pitch', 'button']
+    dataCSV.columns = ['roll', 'pitch', 'button', 'a', 'b', 'c']
     
     # Set up video writer based on test flag
     if test:
         videoWriter, videoName = createVideoWriter("vistest/model", cameraProperties)
     else:
-        videoWriter, videoName = createVideoWriter(f"{dateStr}/process/model", cameraProperties)
+        videoWriter, videoName = createVideoWriter(f"{dateStr}/process/modelSCP", cameraProperties)
 
     # Pyrender setup (create a Pyrender scene)
     scene = pyrender.Scene()
@@ -106,8 +107,109 @@ def visualizer3dVideo(filename: str, cameraProperties: list, dateStr: str = "", 
 
     return videoName
 
+def visualizer3dAIDVideo(filename: str, cameraProperties: list, dateStr: str = "", test: bool = False):
+    # Read the CSV file with transformation data
+    dataCSV = pd.read_csv(filename, header=None)
+    dataCSV.columns = ['a', 'b', 'c','roll', 'pitch', 'button']
+    
+    # Set up video writer based on test flag
+    if test:
+        videoWriter, videoName = createVideoWriter("vistest/model", cameraProperties)
+    else:
+        videoWriter, videoName = createVideoWriter(f"{dateStr}/process/modelAID", cameraProperties)
 
+    # Pyrender setup (create a Pyrender scene)
+    scene = pyrender.Scene()
 
+    # Track the node added for each mesh for removal later
+    mesh_nodes = []
+
+    for rowIndex, data in dataCSV.iterrows():
+        roll = np.radians(data['roll'])
+        pitch = np.radians(data['pitch'])
+        button = int(data['button'])
+
+        if button > 0:
+            pass
+
+        # Compute rotation matrices for roll and pitch
+        Rx = np.array([
+            [1, 0, 0],
+            [0, np.cos(roll), -np.sin(roll)],
+            [0, np.sin(roll), np.cos(roll)]
+        ])  # Rotation using roll
+
+        Ry = np.array([
+            [np.cos(pitch), 0, np.sin(pitch)],
+            [0, 1, 0],
+            [-np.sin(pitch), 0, np.cos(pitch)]
+        ])  # Rotation using pitch
+
+        # Combine roll and pitch rotations
+        R = Rx @ Ry  
+        T = np.eye(4)
+        T[:3, :3] = R
+
+        # Load the appropriate mesh based on the button state
+        if button == 0:  # IDLE
+            mesh = trimesh.load_mesh("3dassets/pipette_up.obj")
+            buttonTEXT = "Idle"
+        elif button == 1:  # SUCK
+            mesh = trimesh.load_mesh("3dassets/pipette_down.obj")
+            buttonTEXT = "Sucking"
+        elif button == 10: # RELEASE
+            mesh = trimesh.load_mesh("3dassets/pipette_up.obj")
+            buttonTEXT = "Releasing"
+        elif button == 11: # IDLE
+            mesh = trimesh.load_mesh("3dassets/pipette_down.obj")
+            buttonTEXT = "Idle"
+
+        # Apply the transformation to the mesh
+        mesh.apply_transform(T)
+
+        # Create a Pyrender mesh from the Trimesh object
+        pyrender_mesh = pyrender.Mesh.from_trimesh(mesh)
+
+        # Create a Pyrender node for the mesh and add it to the scene
+        mesh_node = scene.add(pyrender_mesh)
+        mesh_nodes.append(mesh_node)
+
+        # Set up the camera (Position it in front of the mesh)
+        camera = pyrender.PerspectiveCamera(yfov=np.pi / 3.0, aspectRatio=cameraProperties[0] / cameraProperties[1])
+
+        # Move the camera further away from the object on the Z-axis
+        camera_pose = np.eye(4)
+        camera_pose[:3, 3] = [0, 0, 30]  # Move the camera even further on the Z-axis (increase the value)
+        scene.add(camera, pose=camera_pose)
+
+        # Set up a light source in the scene
+        light = pyrender.DirectionalLight(color=np.ones(3), intensity=3.0)
+        scene.add(light, pose=camera_pose)
+
+        # Set up offscreen rendering with Pyrender
+        r = pyrender.OffscreenRenderer(int(cameraProperties[0]), int(cameraProperties[1]))
+        color, depth = r.render(scene)
+
+        # Convert the color image to OpenCV BGR format
+        img_bgr = cv.cvtColor(color, cv.COLOR_RGB2BGR)
+
+        # Add text to the frame
+        cv.putText(img_bgr, f"Pipette Controller", (0, 25), cv.FONT_HERSHEY_DUPLEX,
+                   0.5, (0, 0, 0), 1, cv.LINE_AA)
+
+        cv.putText(img_bgr, f"Roll: {round(data['roll'], 2)}, Pitch: {round(data['pitch'], 2)}, Button Pressed: {buttonTEXT}",
+                   (0, 50), cv.FONT_HERSHEY_DUPLEX, 0.5, (0, 0, 0), 1, cv.LINE_AA)
+
+        # Write the frame to the video file
+        videoWriter.write(img_bgr)
+
+        # Remove the mesh node from the scene after rendering the frame
+        scene.remove_node(mesh_node)
+
+    # Release the video writer after all frames are written
+    videoWriter.release()
+
+    return videoName
 
 def generate_random_transform_csv(num_samples):
     """Used to generate random csv to test above code.
@@ -125,7 +227,8 @@ def generate_random_transform_csv(num_samples):
     # Initialize lists to store the values
     roll_values = []
     pitch_values = []
-    button = np.random.randint(0, 2, size=num_samples)  # 0 or 1
+    button1 = np.random.choice([0,1]) 
+    button2 = random.choice(['00', '01', '10']) 
     
     # Initialize random starting roll and pitch
     roll = np.random.uniform(0, 360)
@@ -154,9 +257,12 @@ def generate_random_transform_csv(num_samples):
 
     # Create the DataFrame
     data = {
-        'roll': roll_values,
-        'pitch': pitch_values,
-        'button': button
+        'rollSCP': roll_values,
+        'pitchSCP': pitch_values,
+        'buttonSCP': button1,
+        'rollAID': roll_values,
+        'pitchAID': pitch_values,
+        'buttonAID': button2
     }
     df = pd.DataFrame(data)
     
@@ -216,10 +322,10 @@ if __name__=="__main__":
 
     cap.release()
 
-    randomTestFile = generate_random_transform_csv(30)
+    randomTestFile = generate_random_transform_csv(150)
     # randomTestFile = generate_sweep_csv()
 
-    animatedVideo = visualizer3dVideo(randomTestFile, cameraProperties, test = True)
+    animatedVideo = visualizer3dAIDVideo(randomTestFile, cameraProperties, test = True)
 
     footage = cv.VideoCapture(animatedVideo)
 

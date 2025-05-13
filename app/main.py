@@ -14,7 +14,7 @@ from datetime import datetime
 import os
 from serial_read_sample import read_hub_serial
 import csv
-from visualizer3d import visualizer3dVideo
+from visualizer3d import visualizer3dSCPVideo, visualizer3dAIDVideo
 import numpy as np
 from reportMaker import makeReport
 
@@ -251,7 +251,7 @@ class recordScreen(ctk.CTkFrame):
 
 
         file = open(f"video/{dateStr}/raw/data.csv", mode='w', newline='')
-        dataWriter = csv.DictWriter(file, fieldnames=["RollF","PitchF","Button"])
+        dataWriter = csv.DictWriter(file, fieldnames=["SCPRollF","SCPPitchF","SCPButton","AIDRollF","AIDPitchF","AIDButton"])
         
         def serial2Dict(serialString: str):
             """Function to convert from the string outputted from the Arduino into a dictionary for CSV saving.
@@ -262,12 +262,18 @@ class recordScreen(ctk.CTkFrame):
             Returns:
                 dict: Dictionary explaining what string was
             """
-            label, data = serialString.split(":")
-            roll, pitch, button = data.split("/")
+            SCP, AID = serialString.split("+")
+            label, data = SCP.split(":")
+            rollSCP, pitchSCP, buttonSCP = data.split("/")
+            label, data = AID.split(":")
+            rollAID, pitchAID, buttonAID = data.split("/")
             row = {
-                "RollF":roll,
-                "PitchF":pitch,
-                "Button":button
+                "SCPRollF":rollSCP,
+                "SCPPitchF":pitchSCP,
+                "SCPButton":buttonSCP,
+                "AIDRollF":rollAID,
+                "AIDPitchF":pitchAID,
+                "AIDButton":buttonAID
             }
             return row
         
@@ -528,7 +534,7 @@ class processVideoScreen(ctk.CTkFrame):
         self.titleLabel = ctk.CTkLabel(self, text = f"Reviewing", font = ("Segoe UI", 80, "bold"))
         self.titleLabel.grid(row = 0, column = 0, columnspan = 2, pady=10, padx=10, sticky = "nsew")
 
-        self.cameraFrame = tk.Canvas(self, width = self.master.cameraProperties[0]*2, height = self.master.cameraProperties[1], highlightthickness=1)
+        self.cameraFrame = tk.Canvas(self, width = self.master.cameraProperties[0]*3, height = self.master.cameraProperties[1], highlightthickness=1)
         self.cameraFrame.grid(row = 1, column = 0, pady = 10, padx = 10)
 
         tempFrame = Image.open("loadingGraphics/wait.jpg")
@@ -541,7 +547,7 @@ class processVideoScreen(ctk.CTkFrame):
         self.playButton.grid(row = 2, columnspan = 2, column = 0, pady=10, padx=10, sticky = "nsew")
        
         # Statistics frame
-        self.statistics = ctk.CTkFrame(self, fg_color=None, bg_color=None)
+        self.statistics = ctk.CTkFrame(self)
         self.statistics.grid(row = 1, column = 1, pady=10, padx=10, sticky = "nsew")
         self.statistics.pack_propagate(False)
         
@@ -755,25 +761,46 @@ class processVideoScreen(ctk.CTkFrame):
             processedVideoList[index] = processVideoName
 
             # Finish analysing video, now analysing tool
-            with open(self.master.toolData, mode="r", newline='') as file:
-                allData = list(csv.DictReader(file, fieldnames = ['roll','pitch','button']))  # Read all rows into a list
-                toolData = allData[self.toolSampleRange[0]:self.toolSampleRange[1]]  # Adjust for 0-based indexing
+            if self.usage == 0:
+                with open(self.master.toolData, mode="r", newline='') as file:
+                    allData = list(csv.DictReader(file, fieldnames = ['roll','pitch','button','a','b','c']))  # Read all rows into a list
+                    toolData = allData[self.toolSampleRange[0]:self.toolSampleRange[1]]  # Adjust for 0-based indexing
+            elif self.usage == 1:
+                with open(self.master.toolData, mode="r", newline='') as file:
+                    allData = list(csv.DictReader(file, fieldnames = ['a','b','c','roll','pitch','button']))  # Read all rows into a list
+                    toolData = allData[self.toolSampleRange[0]:self.toolSampleRange[1]]  # Adjust for 0-based indexing
+
             
             # Note: 210 - 330 is okay curl
             badUseCount = 0
             badAngle = False # Bool that resets after every falling edge
 
-            for sample in toolData:
-                if sample["button"] == 1: # Check if button is pressed aka liquid is being picked up/dropped
-                    rollGood = 210 <= sample["roll"] <= 260  or 280 <= sample["roll"] <= 330 # check if either pitch or roll is okay
-                    pitchGood = 210 <= sample["pitch"] <= 260 or 280 <= sample["pitch"] <= 330 # check if either pitch or roll is okay
-                    if not (rollGood or pitchGood): # if neither is good:
-                        if not badAngle: # no point counting it during a long press
-                            badAngle = True
-                            badUseCount += 1 # Increase baduse count by 1
+            if self.usage == 0:
+                for sample in toolData:
+                    if sample["button"] == 1: # Check if button is pressed aka liquid is being picked up/dropped
+                        rollGood = 210 <= float(sample["roll"]) <= 260  or 280 <= float(sample["roll"]) <= 330 # check if either pitch or roll is okay
+                        pitchGood = 210 <= float(sample["pitch"]) <= 260 or 280 <= float(sample["pitch"]) <= 330 # check if either pitch or roll is okay
+                        if not (rollGood or pitchGood): # if neither is good:
+                            if not badAngle: # no point counting it during a long press
+                                badAngle = True
+                                badUseCount += 1 # Increase baduse count by 1
 
-                else:
-                    badAngle = False # Reset after falling edge
+                    else:
+                        badAngle = False # Reset after falling edge
+
+            elif self.usage == 1:
+                for sample in toolData:
+                    if sample["button"] == '01' or sample["button"] == '10': # Check if button is pressed aka liquid is being picked up/dropped
+                        rollGood = 210 <= float(sample["roll"]) <= 260  or 280 <= float(sample["roll"]) <= 330 # check if either pitch or roll is okay
+                        pitchGood = 210 <= float(sample["pitch"]) <= 260 or 280 <= float(sample["pitch"]) <= 330 # check if either pitch or roll is okay
+                        if not (rollGood or pitchGood): # if neither is good:
+                            if not badAngle: # no point counting it during a long press
+                                badAngle = True
+                                badUseCount += 1 # Increase baduse count by 1
+
+                    else:
+                        badAngle = False # Reset after falling edge
+
 
             textFile.write(f"When using the {tool}, you held it at a bad angle {badUseCount} times. Make sure to hold it at a slight angle instead of vertically upwards to prevent contamination.")
             textFile.write("\n")
@@ -794,14 +821,15 @@ class processVideoScreen(ctk.CTkFrame):
         sanitiseCheck(self.master.videoName[4], 4)
         print("Finished processing sanitisation")
 
-        toolVideoName = visualizer3dVideo(self.master.toolData, self.master.cameraProperties, self.dateStr)
+        SCPVideoName = visualizer3dSCPVideo(self.master.toolData, self.master.cameraProperties, self.dateStr)
+        AIDVideoName = visualizer3dAIDVideo(self.master.toolData, self.master.cameraProperties, self.dateStr)
         print("Finished processing tool use")
 
         print("Finished all processing")
         makeReport(f"video/{self.dateStr}")
         print("Report generated")
 
-        self.master.toolData = toolVideoName
+        self.master.toolData = [SCPVideoName,AIDVideoName]
         self.master.videoName = processedVideoList
 
         self.playButton.configure(text = "Play Video")         
@@ -821,8 +849,12 @@ class processVideoScreen(ctk.CTkFrame):
         videoWriter, videoName = camera.createVideoWriter(f"{self.dateStr}/final/final", cameraProperties)
 
         print(f"Now replaying footage {videoName}")
-        toolFootage = cv.VideoCapture(self.master.toolData)
-        if not toolFootage.isOpened():
+        SCPFootage = cv.VideoCapture(self.master.toolData[0])
+        if not SCPFootage.isOpened():
+            print("pain")
+
+        AIDFootage = cv.VideoCapture(self.master.toolData[0])
+        if not AIDFootage.isOpened():
             print("pain")
 
         notes = open(f"video/{self.dateStr}/final/note.txt", "r")
@@ -837,10 +869,11 @@ class processVideoScreen(ctk.CTkFrame):
 
                 while True:
                     retCam, frameCam = camFootage.read()
-                    retTool, frameTool = toolFootage.read()
+                    retSCP, frameSCP = SCPFootage.read()
+                    retAID, frameAID = AIDFootage.read()
 
-                    if retCam and retTool:
-                        frame = np.hstack((frameCam,frameTool))
+                    if retCam and retSCP and retAID:
+                        frame = np.hstack((frameCam,frameSCP,frameAID))
                         videoWriter.write(frame)
 
                         framePIL = convertCVtoPIL(frame)
@@ -859,7 +892,8 @@ class processVideoScreen(ctk.CTkFrame):
             self.details.configure(text = noteAll.strip())
             self.update()
         
-        toolFootage.release()
+        SCPFootage.release()
+        AIDFootage.release()
         videoWriter.release()
 
         self.playButton.configure(text = "Return to menu")         
