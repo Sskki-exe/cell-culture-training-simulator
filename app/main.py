@@ -61,15 +61,11 @@ class app(ctk.CTk):
             print("Camera brokey")
             self.destroy()
 
-        # Loading Screen 2
-        self.display = loadingFrame(self, loadingImageStr="loadingGraphics/2.JPG")
-        self.update()
-
         # Change camera properties to be as best as they can be for more accurate detection
         self.cameraProperties = camera.getCameraProperties(self.cap)
 
         # Loading Screen 2
-        self.display = loadingFrame(self, loadingImageStr="loadingGraphics/3.JPG")
+        self.display = loadingFrame(self, loadingImageStr="loadingGraphics/2.JPG")
         self.display.grid(row=0, column = 0, pady=10, padx=10, sticky = "nsew")
         self.update()
 
@@ -141,10 +137,10 @@ class menuFrame(ctk.CTkFrame):
 
         self.grid_columnconfigure(0, weight = 1)
         self.grid_rowconfigure(0, weight = 1)
-        self.grid_rowconfigure(1, weight = 0, uniform="cell") # Just do sanitization
-        self.grid_rowconfigure(2, weight = 0, uniform="cell") # Just do object identification/verification 
-        self.grid_rowconfigure(3, weight = 0, uniform="cell") # Do a full run
-        self.grid_rowconfigure(4, weight = 0, uniform="cell") # Close app
+        self.grid_rowconfigure(1, weight = 0, uniform="cell") # Single Channel Pipette
+        self.grid_rowconfigure(2, weight = 0, uniform="cell") # Pipette Aid
+        self.grid_rowconfigure(3, weight = 0, uniform="cell") # Close App
+        self.grid_rowconfigure(4, weight = 0, uniform="cell") # Calibrate
 
         
         self.titleLabel = ctk.CTkLabel(self, text = "Cell Culture Training", font = ("Segoe UI", 100, "bold"))
@@ -153,7 +149,7 @@ class menuFrame(ctk.CTkFrame):
         self.singleChannelPippetteButton = ctk.CTkButton(self, text = "Assess Single Channel Pippetting", command = master.displaySingleChannel)
         self.singleChannelPippetteButton.grid(row = 1, column = 0, pady=10, padx=10, sticky = "nsew")
 
-        self.pippetteAidButton = ctk.CTkButton(self, text = "Assess Pippetoir Skills", command = master.displayPipetteAid)
+        self.pippetteAidButton = ctk.CTkButton(self, text = "Assess Pipette Aid", command = master.displayPipetteAid)
         self.pippetteAidButton.grid(row = 2, column = 0, pady=10, padx=10, sticky = "nsew")
          
         self.escapeButton = ctk.CTkButton(self, text = "Exit", command = master.close, fg_color="red", hover_color="red")
@@ -205,7 +201,7 @@ class recordScreen(ctk.CTkFrame):
         #                     dark_image=Image.open("loadingGraphics/wait.jpg"),
         #                     size=(1280, 720))
         
-        self.titleLabel = ctk.CTkLabel(self, text = f"Recording", font = ("Segoe UI", 100, "bold"))
+        self.titleLabel = ctk.CTkLabel(self, text = f"Recording", font = ("Segoe UI", 80, "bold"))
         self.titleLabel.grid(row = 0, column = 0, pady=10, padx=10, sticky = "nsew")
 
         self.cameraFrame = tk.Canvas(self, width = self.master.cameraProperties[0], height = self.master.cameraProperties[1], highlightthickness=1)
@@ -297,6 +293,8 @@ class recordScreen(ctk.CTkFrame):
 
         print("Start recording sanisation")
         self.recordCamera = True
+        self.titleLabel.configure(text = "Recording Sanitation")
+        self.update()
 
         start = time.time()
 
@@ -337,6 +335,8 @@ class recordScreen(ctk.CTkFrame):
 
         print("Start recording collection")
         self.recordCamera = True
+        self.titleLabel.configure(text = "Recording Material Collection")
+        self.update()
         
         start = time.time()
 
@@ -376,6 +376,8 @@ class recordScreen(ctk.CTkFrame):
 
         print("Start recording tool usage")
         self.recordCamera = True
+        self.titleLabel.configure(text = "Recording Tool Usage")
+        self.update()
 
         start = time.time()
 
@@ -416,6 +418,8 @@ class recordScreen(ctk.CTkFrame):
 
         print("Start recording clean up")
         self.recordCamera = True
+        self.titleLabel.configure(text = "Recording space cleaning")
+        self.update()
 
         start = time.time()
 
@@ -454,6 +458,8 @@ class recordScreen(ctk.CTkFrame):
 
         print("Start recording sanisation")
         self.recordCamera = True
+        self.titleLabel.configure(text = "Recording Sanitation")
+        self.update()
 
         start = time.time()
 
@@ -519,7 +525,7 @@ class processVideoScreen(ctk.CTkFrame):
                             dark_image=Image.open("loadingGraphics/wait.jpg"),
                             size=(1280, 720))
         
-        self.titleLabel = ctk.CTkLabel(self, text = f"Reviewing", font = ("Segoe UI", 100, "bold"))
+        self.titleLabel = ctk.CTkLabel(self, text = f"Reviewing", font = ("Segoe UI", 80, "bold"))
         self.titleLabel.grid(row = 0, column = 0, columnspan = 2, pady=10, padx=10, sticky = "nsew")
 
         self.cameraFrame = tk.Canvas(self, width = self.master.cameraProperties[0]*2, height = self.master.cameraProperties[1], highlightthickness=1)
@@ -535,7 +541,7 @@ class processVideoScreen(ctk.CTkFrame):
         self.playButton.grid(row = 2, columnspan = 2, column = 0, pady=10, padx=10, sticky = "nsew")
        
         # Statistics frame
-        self.statistics = ctk.CTkFrame(self)
+        self.statistics = ctk.CTkFrame(self, fg_color=None, bg_color=None)
         self.statistics.grid(row = 1, column = 1, pady=10, padx=10, sticky = "nsew")
         self.statistics.pack_propagate(False)
         
