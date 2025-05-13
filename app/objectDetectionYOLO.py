@@ -342,7 +342,9 @@ class ObjectDetectorYOLO():
             cv.rectangle(blank, (legend_x, y - 6), (legend_x + 10, y + 2), color, -1)
             cv.putText(blank, name, (legend_x + 18, y + 2), cv.FONT_HERSHEY_SIMPLEX, font_scale, color, 1, cv.LINE_AA)
             
-        img = Image.fromarray(blank)
+        img = Image.fromarray(cv.copyMakeBorder(blank, 
+                                                top=10, bottom=10, left=10, right=10, 
+                                                borderType=cv.BORDER_CONSTANT, value=[0, 0, 0]))
         img.save(f'{folder}/process/2.png')
 
 ############################################################################

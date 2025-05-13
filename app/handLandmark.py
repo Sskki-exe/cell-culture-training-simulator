@@ -45,7 +45,10 @@ class SanitisationMask():
         return coverage
     
     def saveMaskImage(self, filename: str):
-        img = Image.fromarray(self.mask)
+        copy = 255* np.ones_like(self.mask)
+        img = Image.fromarray(cv.copyMakeBorder(copy-self.mask, 
+                                                top=10, bottom=10, left=10, right=10, 
+                                                borderType=cv.BORDER_CONSTANT, value=[0, 0, 0]))
         img.save(filename)
 
 

@@ -623,6 +623,8 @@ class processVideoScreen(ctk.CTkFrame):
 
                 elif ret == False:
                     break
+
+            self.master.objectDetector.saveObjectLocations(annotatedFrame, result, f"video/{self.dateStr}")
             
             textFile.write(f"These are the items you collected:")
             textFile.write(', '.join(f"{key}: {value}" for key, value in items.items()))
@@ -744,7 +746,7 @@ class processVideoScreen(ctk.CTkFrame):
             else:
                 textFile.write(f"Your hands had a max speed of {maxSpeed} cm/s, which reached beyond the recommended hand speed of {badSpeed} cm/s.\t")
 
-            textFile.write(f"You removed your hands a total of {handsRemovalCount}\t times.")
+            textFile.write(f"You removed your hands a total of {handsRemovalCount} times.\t")
 
             footage.release()
             videoWriter.release() 
@@ -803,7 +805,6 @@ class processVideoScreen(ctk.CTkFrame):
         self.playButton.configure(text = "Play Video")         
         self.playButton.configure(command = self.playVideo) 
         self.update()
-
 
     def playVideo(self):
         """Function to play the video on the screen
