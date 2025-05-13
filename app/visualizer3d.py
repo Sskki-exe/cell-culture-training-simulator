@@ -4,14 +4,9 @@ import numpy as np
 import os
 import pyrender
 import trimesh
-# os.environ["LIBGL_ALWAYS_SOFTWARE"] = "1"
-# os.environ["OPEN3D_CPU_RENDERING"] = "true"
 import open3d as o3d
 from camera import createVideoWriter, getCameraProperties
 from datetime import datetime
-
-
-
 
 MARGIN = 10  # pixels
 FONT_SIZE = 1
@@ -95,10 +90,10 @@ def visualizer3dVideo(filename: str, cameraProperties: list, dateStr: str = "", 
 
         # Add text to the frame
         cv.putText(img_bgr, f"Single Channel Pipette", (0, 25), cv.FONT_HERSHEY_DUPLEX,
-                   0.5, (0, 0, 0), 2, cv.LINE_AA)
+                   0.5, (0, 0, 0), 1, cv.LINE_AA)
 
         cv.putText(img_bgr, f"Roll: {round(data['roll'], 2)}, Pitch: {round(data['pitch'], 2)}, Button Pressed: {bool(data['button'])}",
-                   (0, 50), cv.FONT_HERSHEY_DUPLEX, 0.5, (0, 0, 0), 2, cv.LINE_AA)
+                   (0, 50), cv.FONT_HERSHEY_DUPLEX, 0.5, (0, 0, 0), 1, cv.LINE_AA)
 
         # Write the frame to the video file
         videoWriter.write(img_bgr)
@@ -221,8 +216,8 @@ if __name__=="__main__":
 
     cap.release()
 
-    # randomTestFile = generate_random_transform_csv(1000)
-    randomTestFile = generate_sweep_csv()
+    randomTestFile = generate_random_transform_csv(30)
+    # randomTestFile = generate_sweep_csv()
 
     animatedVideo = visualizer3dVideo(randomTestFile, cameraProperties, test = True)
 
@@ -241,16 +236,5 @@ if __name__=="__main__":
     
     footage.release()
 
-    
-    # buttonUp = o3d.io.read_triangle_mesh("visualiser/pipette_up.obj")
-    # buttonDown = o3d.io.read_triangle_mesh("visualiser/pipette_down.obj")
-
-    # print("Has vertex colors:", buttonUp.has_vertex_colors())
-    # print("Has triangle uvs:", buttonUp.has_triangle_uvs())
-    # print("Textures:", len(buttonUp.textures)>0)
-
-    # print("Has vertex colors:", buttonDown.has_vertex_colors())
-    # print("Has triangle uvs:", buttonDown.has_triangle_uvs())
-    # print("Textures:", len(buttonDown.textures)>0)
 
 

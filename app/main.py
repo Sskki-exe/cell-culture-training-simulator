@@ -364,8 +364,6 @@ class recordScreen(ctk.CTkFrame):
         self.master.videoName.append(videoName)
         sampleCount[0] = sampleCount[0] + count
 
-  
-
         # Step 3: Use Tool
         videoWriter, videoName = camera.createVideoWriter(function=f"{dateStr}/raw/tool", cameraProperties=self.master.cameraProperties)
         self.recordButton.configure(command = self.endVideo)
@@ -375,8 +373,6 @@ class recordScreen(ctk.CTkFrame):
         if not videoWriter.isOpened():
             print("AHHHHHHHHHHHH")
             exit()
-
-
 
         print("Start recording tool usage")
         self.recordCamera = True
