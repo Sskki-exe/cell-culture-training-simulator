@@ -101,7 +101,7 @@ class app(ctk.CTk):
         self.update()
     
     def displaySingleChannel(self):
-        """Function to record screen for sanitisation
+        """Function to record screen for Single Channel Pipette Use
         """
         self.tool = 0
         self.display = recordScreen(self, 0)
@@ -109,7 +109,7 @@ class app(ctk.CTk):
         self.update()
 
     def displayPipetteAid(self):
-        """Function to record screen for object detection
+        """Function to record screen for Pipette Aid Use
         """
         self.tool = 1
         self.display = recordScreen(self, 1)
