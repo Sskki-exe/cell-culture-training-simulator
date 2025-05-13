@@ -12,7 +12,7 @@ import numpy as np
 from result import Result
 import camera
 import time
-import copy
+from PIL import Image
 
 from mediapipe import solutions
 from mediapipe.framework.formats import landmark_pb2
@@ -43,6 +43,11 @@ class SanitisationMask():
         rawCoverage=np.sum(np.sum(np.sum(binaryMask))) # Figure out how many '1's there are
         coverage = round(rawCoverage/(self.cameraProperties[1]*self.cameraProperties[0]) * 100,3) # Determine as percentage of total mask size
         return coverage
+    
+    def saveMaskImage(self, filename: str):
+        img = Image.fromarray(self.mask)
+        img.save(filename)
+
 
 ############################################################################
 
@@ -658,7 +663,7 @@ class handLandmarker():
         else:
             rightxspeed = 0
 
-        speedx = max(leftxspeed, rightxspeed)
+        speedx = max(leftxspeed, rightxspeed)*100 # into cm/s
 
         return speedx
     

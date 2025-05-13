@@ -12,7 +12,7 @@ from ultralytics import YOLO
 import numpy as np
 import cv2 as cv
 from result import Result
-import random
+from PIL import Image
 
 class ObjectDetectorYOLO():
     ############################
@@ -304,6 +304,46 @@ class ObjectDetectorYOLO():
                 frameStamps.append(index)
 
         return frameStamps
+    #################################### Report Saver ########################################
+
+    def saveObjectLocations(self, frame, analysis: Result, folder: str):
+        result = analysis.result
+        boxes = result.boxes
+        cls = result.boxes.cls
+        size = 1
+        thickness = 2
+        blank = np.ones_like(frame, dtype=np.uint8)*255
+        legendItems = set() # Only want to save unique items
+
+        for i, box in enumerate(boxes.xyxy):  
+            color = ObjectDetectorYOLO.COLORS[int(cls[i])]
+            className = result[0].names[int(cls[i])]
+            item = (color,className)
+            xB = int(box[2])
+            xA = int(box[0])
+            yB = int(box[3])
+            yA = int(box[1])
+            xMid = int((xA + xB)/2)
+            yMid = int((yA + yB)/2)
+            
+            # Add a crosshair into centre of detected object
+            cv.line(blank, (xMid + size, yMid), (xMid - size, yMid), color, thickness)
+            cv.line(blank, (xMid, yMid - size), (xMid, yMid + size), color, thickness)
+
+            legendItems.add(item)
+
+        # Adding legend
+        legend_x, legend_y = 5, 10
+        font_scale = 0.35
+        line_height = 14  # Adjusted for smaller text
+
+        for i, (color, name) in enumerate(legendItems):
+            y = legend_y + i * line_height
+            cv.rectangle(blank, (legend_x, y - 6), (legend_x + 10, y + 2), color, -1)
+            cv.putText(blank, name, (legend_x + 18, y + 2), cv.FONT_HERSHEY_SIMPLEX, font_scale, color, 1, cv.LINE_AA)
+            
+        img = Image.fromarray(blank)
+        img.save(f'{folder}/process/2.png')
 
 ############################################################################
 
@@ -318,7 +358,7 @@ if __name__ == "__main__":
             ret, frame = video.read()        
             if ret:
                 result = testModel.detect(frame, 0)
-                frame, _, _ = testModel.visualiseAll(frame, result)
+                testModel.saveObjectLocations(frame, result, "a")
                 cv.imshow('frame', frame)
             
             if cv.waitKey(1) == ord('q'):

@@ -16,6 +16,7 @@ from serial_read_sample import read_hub_serial
 import csv
 from visualizer3d import visualizer3dVideo
 import numpy as np
+from reportMaker import makeReport
 
 def convertCVtoPIL(frame):
     """Function to convert from openCV array to PIL array
@@ -592,6 +593,7 @@ class processVideoScreen(ctk.CTkFrame):
             footage.release()
         
             coverage = mask.calculateMaskCoverage() # Get percentage
+            mask.saveMaskImage(filename=f"video/{self.dateStr}/process/{index}.png")
             videoWriter.release()
             processedVideoList[index] = processVideoName # Store video name
 
@@ -621,13 +623,18 @@ class processVideoScreen(ctk.CTkFrame):
 
                 elif ret == False:
                     break
+            
+            textFile.write(f"These are the items you collected:")
+            textFile.write(', '.join(f"{key}: {value}" for key, value in items.items()))
+            textFile.write(".\t")     
+
             # Hardcoded beyond belief
             neededItems = dict()
             neededItems["Single Channel Pipettor"] = 1
             neededItems['Cell Culture Plate - 24'] = 1
 
             missingItems, missingBool = self.master.objectDetector.checkCorrectItems(items, neededItems) # Check
-            
+       
             if missingBool:
                 textFile.write(f"You got all the materials you needed!")
                 textFile.write("\n")
@@ -730,12 +737,12 @@ class processVideoScreen(ctk.CTkFrame):
                 elif ret == False:
                     break
 
-            badSpeed = 80 # Speed which we deem to be too fast; in cm/s
+            badSpeed = 30 # Speed which we deem to be too fast; in cm/s
             if maxSpeed < badSpeed:
-                textFile.write(f"You had a max speed of had a total of {maxSpeed} cm/s, which is below the recommended hand speed of {badSpeed} cm/s. Great job!\t")
+                textFile.write(f"Your hands had a max speed of {maxSpeed} cm/s, which is below the recommended hand speed of {badSpeed} cm/s. Great job!\t")
             
             else:
-                textFile.write(f"You had a max speed of had a total of {maxSpeed} cm/s, which reached beyond the recommended hand speed of {badSpeed} cm/s.\t")
+                textFile.write(f"Your hands had a max speed of {maxSpeed} cm/s, which reached beyond the recommended hand speed of {badSpeed} cm/s.\t")
 
             textFile.write(f"You removed your hands a total of {handsRemovalCount}\t times.")
 
@@ -787,6 +794,8 @@ class processVideoScreen(ctk.CTkFrame):
         print("Finished processing tool use")
 
         print("Finished all processing")
+        makeReport(f"video/{self.dateStr}")
+        print("Report generated")
 
         self.master.toolData = toolVideoName
         self.master.videoName = processedVideoList
