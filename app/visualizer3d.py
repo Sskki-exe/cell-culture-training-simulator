@@ -1,7 +1,6 @@
 import pandas as pd
 import cv2 as cv
 import numpy as np
-import os
 import pyrender
 import random
 import trimesh
@@ -10,6 +9,7 @@ from datetime import datetime
 import time
 import open3d as o3d
 import torch
+from serial_read_sample import read_hub_serial
 
 MARGIN = 10  # pixels
 FONT_SIZE = 1
@@ -508,7 +508,8 @@ if __name__=="__main__":
 
     cap.release()
 
-    # randomTestFile = generate_random_transform_csv(150)
+    # Test visualisation
+    randomTestFile = generate_random_transform_csv(150)
     randomTestFile = generate_sweep_csv()
     
     pyrendertime = time.time()
@@ -520,20 +521,7 @@ if __name__=="__main__":
     o3drendertime = time.time() - o3drendertime
 
     print(pyrendertime,o3drendertime)
-    # footage = cv.VideoCapture(animatedVideo)
 
-    # while True:
-    #     ret, frame = footage.read()
-    #     if ret:
-    #         cv.imshow("frame", frame)
-
-    #     if cv.waitKey(1) == ord('q'):
-    #         break
-
-    #     if not ret:
-    #         break
-    
-    # footage.release()
 
 
 
