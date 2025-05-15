@@ -154,12 +154,12 @@ class ObjectDetectorYOLO():
         if found:
             cv.putText(annotated_image, f"Object Detection: {itemName} found",
             (0, 50), cv.FONT_HERSHEY_DUPLEX,
-            ObjectDetectorYOLO.FONT_SIZE, ObjectDetectorYOLO.HANDEDNESS_TEXT_COLOR, ObjectDetectorYOLO.FONT_THICKNESS, cv.LINE_AA)
+            ObjectDetectorYOLO.FONT_SIZE/2, (0,0,0), ObjectDetectorYOLO.FONT_THICKNESS, cv.LINE_AA)
         
         else:
             cv.putText(annotated_image, f"Object Detection: {itemName} not found",
             (0, 50), cv.FONT_HERSHEY_DUPLEX,
-            ObjectDetectorYOLO.FONT_SIZE, ObjectDetectorYOLO.HANDEDNESS_TEXT_COLOR, ObjectDetectorYOLO.FONT_THICKNESS, cv.LINE_AA)
+            ObjectDetectorYOLO.FONT_SIZE/2, (0,0,0), ObjectDetectorYOLO.FONT_THICKNESS, cv.LINE_AA)
         
         # cv.putText(annotated_image, f"Found {itemName}: {str(found)}",
         # (0, 50), cv.FONT_HERSHEY_DUPLEX,

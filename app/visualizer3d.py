@@ -425,10 +425,12 @@ def generate_sweep_csv(num_per_sweep: int = 360, toggle_interval: int = 90):
 if torch.cuda.is_available():
     visualizer3dSCPVideo = visualizer3dSCPVideoGPU
     visualizer3dAIDVideo = visualizer3dAIDVideoGPU
+    print("================")
     print("Visualise on GPU")
 else:
     visualizer3dSCPVideo = visualizer3dSCPVideoCPU
     visualizer3dAIDVideo = visualizer3dAIDVideoCPU
+    print("================")
     print("Visualise on CPU")
 
 if __name__=="__main__":

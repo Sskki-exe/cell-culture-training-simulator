@@ -27,6 +27,7 @@ def createVideoWriter(function: str, cameraProperties: list):
         videoName (str): Name of the video being recorded to
     """
     [width,height,fps,fourcc] = cameraProperties
+    print(f"Video Properties: {cameraProperties}")
     date = datetime.now()
     dateStr = date.strftime("%d%m%y %H%M%S")
     videoName = f"video/{function}-{dateStr}.avi"
@@ -62,9 +63,7 @@ def getCameraProperties(cap: cv.VideoCapture):
     # except:
     #     pass
 
-    cameraProperties = [width,height,fps,fourcc]
-    print(cameraProperties)
-    
+    cameraProperties = [width,height,fps,fourcc]    
     return cameraProperties
 
 def recordVideo(videoWriter: cv.VideoWriter, cap: cv.VideoCapture, controller = None):

@@ -70,7 +70,7 @@ class app(ctk.CTk):
         self.update()
 
         # Model Initalisation
-        self.handDetector = handLandmarker(cameraProperties=self.cameraProperties) # Note: might not need to be restarted
+        self.handDetector = handLandmarker(cameraProperties=self.cameraProperties)
         self.objectDetector = ObjectDetectorYOLO()
         self.function = 0
 
@@ -87,7 +87,7 @@ class app(ctk.CTk):
     def displayMenu(self):
         """Function to display menu
         """
-        self.handDetector = handLandmarker(cameraProperties=self.cameraProperties) # Note: might not need to be restarted
+        self.handDetector = handLandmarker(cameraProperties=self.cameraProperties)
         
         self.videoName = []         
         self.toolData = ""
@@ -506,7 +506,6 @@ class recordScreen(ctk.CTkFrame):
         # self.cameraFrame.grid(row = 1, column = 0, pady = 10, padx = 10, sticky = "nsew")
         self.update()
 
-
 class processVideoScreen(ctk.CTkFrame):
     """Frame to play video after processing and analysis
     """
@@ -805,6 +804,7 @@ class processVideoScreen(ctk.CTkFrame):
             textFile.write(f"When using the {tool}, you held it at a bad angle {badUseCount} times. Make sure to hold it at a slight angle instead of vertically upwards to prevent contamination.")
             textFile.write("\n")
 
+        ##########################################################################################
         # Order of video check.
         sanitiseCheck(self.master.videoName[0], 0)
         print("Finished processing starting sanitisation")
@@ -844,7 +844,7 @@ class processVideoScreen(ctk.CTkFrame):
         self.update()
 
         cameraProperties = self.master.cameraProperties.copy()
-        cameraProperties[0] = 2 * cameraProperties[0]
+        cameraProperties[0] = 3 * cameraProperties[0]
 
         videoWriter, videoName = camera.createVideoWriter(f"{self.dateStr}/final/final", cameraProperties)
 
@@ -853,7 +853,7 @@ class processVideoScreen(ctk.CTkFrame):
         if not SCPFootage.isOpened():
             print("pain")
 
-        AIDFootage = cv.VideoCapture(self.master.toolData[0])
+        AIDFootage = cv.VideoCapture(self.master.toolData[1])
         if not AIDFootage.isOpened():
             print("pain")
 
@@ -894,6 +894,7 @@ class processVideoScreen(ctk.CTkFrame):
         
         SCPFootage.release()
         AIDFootage.release()
+        videoWriter.release()
         videoWriter.release()
 
         self.playButton.configure(text = "Return to menu")         
