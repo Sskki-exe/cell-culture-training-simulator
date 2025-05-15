@@ -202,7 +202,7 @@ class handLandmarker():
                     annotated_image = self.drawCentreCircle(annotated_image, [x, y, z])
                     # print(f"Depth: {depth}")
 
-                    if depth > 0: # self.backgroundDepth: 
+                    if depth > self.backgroundDepth: 
                         (circleCentre) = self.convertNormalToImageCoord(x,y) # Convert the normal coordinate representation of the hand into image coordinates
                         middleFingerTip = np.array(self.convertNormalToImageCoord(hand_landmarks[12].x,hand_landmarks[12].y)) # Gets the coordinate of the middle knuckle
                         wrist = np.array(self.convertNormalToImageCoord(hand_landmarks[0].x,hand_landmarks[0].y)) # Gets the coordinate of the wrist

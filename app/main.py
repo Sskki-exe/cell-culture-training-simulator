@@ -14,8 +14,10 @@ from datetime import datetime
 import os
 from serial_read_sample import read_hub_serial
 import csv
-from visualizer3d import visualizer3dSCPVideo, visualizer3dAIDVideo
+from visualizer3d import visualizer3dSCPVideo, visualizer3dAIDVideo, transMatrix, scenePyRender
 import numpy as np
+import pyrender
+import trimesh
 from reportMaker import makeReport
 
 def convertCVtoPIL(frame):
@@ -31,6 +33,30 @@ def convertCVtoPIL(frame):
     RGBframe = Image.fromarray(RGBframe)
     RGBframe = ImageTk.PhotoImage(image=RGBframe)
     return RGBframe
+
+def serial2Dict(serialString: str):
+    """Function to convert from the string outputted from the Arduino into a dictionary for CSV saving.
+
+    Args:
+        serialString (str): String from Arduino
+
+    Returns:
+        dict: Dictionary explaining what string was
+    """
+    SCP, AID = serialString.split("+")
+    label, data = SCP.split(":")
+    rollSCP, pitchSCP, buttonSCP = data.split("/")
+    label, data = AID.split(":")
+    rollAID, pitchAID, buttonAID = data.split("/")
+    row = {
+        "SCPRollF":rollSCP,
+        "SCPPitchF":pitchSCP,
+        "SCPButton":buttonSCP,
+        "AIDRollF":rollAID,
+        "AIDPitchF":pitchAID,
+        "AIDButton":buttonAID
+    }
+    return row
 
 class app(ctk.CTk):
     """Application used to control the system
@@ -73,6 +99,7 @@ class app(ctk.CTk):
         self.handDetector = handLandmarker(cameraProperties=self.cameraProperties)
         self.objectDetector = ObjectDetectorYOLO()
         self.function = 0
+        self.handLength = 20
 
         # Results interpreted from most recent recording
         self.videoName = [] 
@@ -87,13 +114,35 @@ class app(ctk.CTk):
     def displayMenu(self):
         """Function to display menu
         """
-        self.handDetector = handLandmarker(cameraProperties=self.cameraProperties)
+        self.handDetector = handLandmarker(cameraProperties=self.cameraProperties, handLength=self.handLength)
         
         self.videoName = []         
         self.toolData = ""
         self.toolSampleRange = None
-
         self.display = menuFrame(self)
+        self.display.grid(row=0, column = 0, pady=10, padx=10, sticky = "nsew")
+        self.update()
+
+    def displayPractiseSanitation(self):
+        """Function to record screen for Single Channel Pipette Use
+        """
+        self.display = practiseHandScreen(self)
+        self.display.grid(row=0, column = 0, pady=10, padx=10, sticky = "nsew")
+        self.update()
+
+    def displaySingleChannelPractise(self):
+        """Function to record screen for Single Channel Pipette Use
+        """
+        self.tool = 1
+        self.display = practiseToolScreen(self, 1)
+        self.display.grid(row=0, column = 0, pady=10, padx=10, sticky = "nsew")
+        self.update()
+
+    def displayPipetteAidPractise(self):
+        """Function to record screen for Pipette Aid Use
+        """
+        self.tool = 2
+        self.display = practiseToolScreen(self, 2)
         self.display.grid(row=0, column = 0, pady=10, padx=10, sticky = "nsew")
         self.update()
     
@@ -133,6 +182,12 @@ class app(ctk.CTk):
         self.display.grid(row=0, column = 0, pady=10, padx=10, sticky = "nsew")
         self.update()
     
+    def setHandLength(self, handLength):
+        """Function to recalibrate hand length
+        """
+        self.handLength = handLength
+        self.displayPractiseSanitation()
+    
     def close(self):
         """Function to destroy app from menu screen
         """
@@ -167,25 +222,189 @@ class menuFrame(ctk.CTkFrame):
 
         self.grid_columnconfigure(0, weight = 1)
         self.grid_rowconfigure(0, weight = 1)
-        self.grid_rowconfigure(1, weight = 0, uniform="cell") # Single Channel Pipette
-        self.grid_rowconfigure(2, weight = 0, uniform="cell") # Pipette Aid
-        self.grid_rowconfigure(3, weight = 0, uniform="cell") # Calibrate
-        self.grid_rowconfigure(4, weight = 0, uniform="cell") # Close App
+        self.grid_rowconfigure(1, weight = 0, uniform="cell") # Practise Sanitation
+        self.grid_rowconfigure(2, weight = 0, uniform="cell") # Practise Single Channel Pipette
+        self.grid_rowconfigure(3, weight = 0, uniform="cell") # Practise Pipette Aid
+        self.grid_rowconfigure(4, weight = 0, uniform="cell") # Assess Single Channel Pipette
+        self.grid_rowconfigure(5, weight = 0, uniform="cell") # Assess Pipette Aid
+        self.grid_rowconfigure(6, weight = 0, uniform="cell") # Calibrate
+        self.grid_rowconfigure(7, weight = 0, uniform="cell") # Close App
 
         self.titleLabel = ctk.CTkLabel(self, text = "Cell Culture Training", font = ("Segoe UI", 100, "bold"))
         self.titleLabel.grid(row = 0, column = 0, pady=10, padx=10, sticky = "new")
 
-        self.singleChannelPippetteButton = ctk.CTkButton(self, text = "Assess Single Channel Pippetting", command = master.displaySingleChannelTest)
-        self.singleChannelPippetteButton.grid(row = 1, column = 0, pady=10, padx=10, sticky = "nsew")
+        self.sanitationButton = ctk.CTkButton(self, text = "Practise Sanitation", fg_color="#EC9006", hover_color="#E27602", command = master.displayPractiseSanitation)
+        self.sanitationButton.grid(row = 1, column = 0, pady=10, padx=10, sticky = "nsew")
+        
+        self.singleChannelPippettePractiseButton = ctk.CTkButton(self, text = "Practise Single Channel Pippetting", fg_color="#EC9006", hover_color="#E27602", command = master.displaySingleChannelPractise)
+        self.singleChannelPippettePractiseButton.grid(row = 2, column = 0, pady=10, padx=10, sticky = "nsew")
 
-        self.pippetteAidButton = ctk.CTkButton(self, text = "Assess Pipette Aid", command = master.displayPipetteAidTest)
-        self.pippetteAidButton.grid(row = 2, column = 0, pady=10, padx=10, sticky = "nsew")
+        self.pippetteAidPractiseButton = ctk.CTkButton(self, text = "Practise Pipette Aid", fg_color="#EC9006", hover_color="#E27602", command = master.displayPipetteAidPractise)
+        self.pippetteAidPractiseButton.grid(row = 3, column = 0, pady=10, padx=10, sticky = "nsew")
+
+        self.singleChannelPippetteTestButton = ctk.CTkButton(self, text = "Assess Single Channel Pippetting", command = master.displaySingleChannelTest)
+        self.singleChannelPippetteTestButton.grid(row = 4, column = 0, pady=10, padx=10, sticky = "nsew")
+
+        self.pippetteAidTestButton = ctk.CTkButton(self, text = "Assess Pipette Aid", command = master.displayPipetteAidTest)
+        self.pippetteAidTestButton.grid(row = 5, column = 0, pady=10, padx=10, sticky = "nsew")
 
         self.settingsButton = ctk.CTkButton(self, text = "Settings", fg_color="#006400", hover_color="#003C00", command = master.displaySettings)
-        self.settingsButton.grid(row = 3, column = 0, pady=10, padx=10, sticky = "nsew")
+        self.settingsButton.grid(row = 6, column = 0, pady=10, padx=10, sticky = "nsew")
          
         self.escapeButton = ctk.CTkButton(self, text = "Exit", command = master.close, fg_color="#8B0000", hover_color="#610000")
+        self.escapeButton.grid(row = 7, column = 0, pady=10, padx=10, sticky = "nsew")
+
+class practiseHandScreen(ctk.CTkFrame):
+    """Frame used to practise sanitation
+    """
+    def __init__(self, master):
+        super().__init__(master)
+        self.master = master
+        self.mask = SanitisationMask(self.master.cameraProperties)
+        self.count = 0
+        self.result = None
+
+        self.grid_columnconfigure(0, weight = 1)
+        self.grid_rowconfigure(0, weight = 0)
+        self.grid_rowconfigure(1, weight = 1) 
+        self.grid_rowconfigure(2, weight = 0)
+        self.grid_rowconfigure(3, weight = 0) 
+        self.grid_rowconfigure(4, weight = 0) 
+
+        self.titleLabel = ctk.CTkLabel(self, text = f"Practise Sanitation", font = ("Segoe UI", 80, "bold"))
+        self.titleLabel.grid(row = 0, column = 0, pady=10, padx=10, sticky = "nsew")
+
+        self.cameraFrame = tk.Canvas(self, width = self.master.cameraProperties[0], height = self.master.cameraProperties[1], highlightthickness=1)
+        self.cameraFrame.grid(row = 1, column = 0, pady = 10, padx = 10)
+
+        self.resetButton = ctk.CTkButton(self, text = "Reset Sanitation", command = self.mask.resetMask, fg_color="#EC9006", hover_color="#E27602")
+        self.resetButton.grid(row = 2, column = 0, pady=10, padx=10, sticky = "nsew")
+
+        self.calibrateButton = ctk.CTkButton(self, text = "Calibrate Hands", command = self.setHandLength, fg_color="#EC9006", hover_color="#E27602")
+        self.calibrateButton.grid(row = 3, column = 0, pady=10, padx=10, sticky = "nsew")
+
+        self.escapeButton = ctk.CTkButton(self, text = "Return to Main Menu", command = self.master.displayMenu, fg_color="#8B0000", hover_color="#610000")
         self.escapeButton.grid(row = 4, column = 0, pady=10, padx=10, sticky = "nsew")
+
+        self.updateCameraFrame()
+    
+    def updateCameraFrame(self):
+        ret, frame = self.master.cap.read()
+        if ret:
+            self.result = self.master.handDetector.detect(frame, self.count)
+            annotatedFrame = self.master.handDetector.paintImage(frame, self.result, self.mask)
+            framePIL = convertCVtoPIL(annotatedFrame)
+            
+            self.cameraFrame.create_image(0, 0, anchor=tk.NW, image=framePIL)
+            self.cameraFrame.image = framePIL
+            self.update()
+            
+        self.count += 1
+        self.after(33, self.updateCameraFrame)  # ~30 FPS
+    
+    def setHandLength(self):
+        detection_result = self.result.result.hand_landmarks[0]
+        middleKnuckle = np.array(self.master.handDetector.convertNormalToImageCoord(detection_result[9].x,detection_result[9].y)) # Gets the coordinate of the middle knuckle
+        wrist = np.array(self.master.handDetector.convertNormalToImageCoord(detection_result[0].x,detection_result[0].y)) # Gets the coordinate of the wrist
+        pixelDist = np.linalg.norm(middleKnuckle-wrist) # Figure out the amount of pixels used
+        self.master.setHandLength(pixelDist)
+        self.destroy()
+
+class practiseToolScreen(ctk.CTkFrame):
+    """Frame used to practise tool
+    """
+    def __init__(self, master, usage):
+        super().__init__(master)
+        self.master = master
+        self.usage = usage
+        
+        if usage == 0:
+            self.no = 0
+            self.usage = 'Single Channel Pipettor'
+            
+
+        elif usage == 1:
+            self.no = 1
+            self.usage = 'Pipette Controller'
+
+        self.scene = pyrender.Scene()
+
+        self.grid_columnconfigure(0, weight = 1)
+        self.grid_rowconfigure(0, weight = 0)
+        self.grid_rowconfigure(1, weight = 1) 
+        self.grid_rowconfigure(2, weight = 0)
+
+        self.titleLabel = ctk.CTkLabel(self, text = f"Practise {self.usage}", font = ("Segoe UI", 80, "bold"))
+        self.titleLabel.grid(row = 0, column = 0, pady=10, padx=10, sticky = "nsew")
+
+        self.cameraFrame = tk.Canvas(self, width = self.master.cameraProperties[0], height = self.master.cameraProperties[1], highlightthickness=1)
+        self.cameraFrame.grid(row = 1, column = 0, pady = 10, padx = 10)
+
+        self.escapeButton = ctk.CTkButton(self, text = "Return to Main Menu", command = self.master.displayMenu, fg_color="#8B0000", hover_color="#610000")
+        self.escapeButton.grid(row = 2, column = 0, pady=10, padx=10, sticky = "nsew")
+
+        self.updateCameraFrame()
+
+    def updateCameraFrame(self):
+        startTime = time.time()
+        string = read_hub_serial()
+        data = serial2Dict(string)
+        """
+        data = {
+        "SCPRollF":rollSCP,
+        "SCPPitchF":pitchSCP,
+        "SCPButton":buttonSCP,
+        "AIDRollF":rollAID,
+        "AIDPitchF":pitchAID,
+        "AIDButton":buttonAID}
+        """
+        if self.no == 0:
+            roll = np.radians(float(data['SCPRollF']))
+            pitch = np.radians(float(data['SCPPitchF']))
+            button = int(data['SCPButton'])
+
+            if button == 0:  # button down
+                mesh = trimesh.load_mesh("3dassets/pipette_up.obj")
+                buttonTEXT = "False"
+            elif button == 1:  # button down
+                mesh = trimesh.load_mesh("3dassets/pipette_down.obj")
+                buttonTEXT = "True"
+
+        elif self.no == 1:
+            roll = np.radians(float(data['AIDRollF']))
+            pitch = np.radians(float(data['AIDPitchF']))
+            button = int(data['AIDButton'])
+            if button == 0:  # IDLE
+                mesh = trimesh.load_mesh("3dassets/pipette_up.obj")
+                buttonTEXT = "Idle"
+            elif button == 1:  # SUCK
+                mesh = trimesh.load_mesh("3dassets/pipette_down.obj")
+                buttonTEXT = "Sucking"
+            elif button == 10: # RELEASE
+                mesh = trimesh.load_mesh("3dassets/pipette_up.obj")
+                buttonTEXT = "Releasing"
+            elif button == 11: # IDLE
+                mesh = trimesh.load_mesh("3dassets/pipette_down.obj")
+                buttonTEXT = "Idle"
+
+        T = transMatrix(roll,pitch)
+        img_bgr, mesh_node = scenePyRender(self.scene,mesh,T, self.master.cameraProperties) # Scene Renderer
+
+        # Add text to the frame
+        cv.putText(img_bgr, f"{self.usage}", (0, 25), cv.FONT_HERSHEY_DUPLEX,
+                   0.5, (0, 0, 0), 1, cv.LINE_AA)
+
+        cv.putText(img_bgr, f"Roll: {round(roll, 2)}, Pitch: {round(pitch, 2)}, Button Pressed: {buttonTEXT}",
+                   (0, 50), cv.FONT_HERSHEY_DUPLEX, 0.5, (0, 0, 0), 1, cv.LINE_AA)
+
+        framePIL = convertCVtoPIL(img_bgr)
+
+        self.cameraFrame.create_image(0, 0, anchor=tk.NW, image=framePIL)
+        self.cameraFrame.image = framePIL
+        self.scene.remove_node(mesh_node)
+        print(time.time() - startTime)
+        self.update()            
+        self.after(33, self.updateCameraFrame)  # ~30 FPS
 
 class settingsScreen(ctk.CTkFrame):
     """Frame used to change settings in the app
@@ -195,9 +414,7 @@ class settingsScreen(ctk.CTkFrame):
         self.grid_columnconfigure(0, weight = 1)
         self.grid_rowconfigure(0, weight = 0)
         self.grid_rowconfigure(1, weight = 0) 
-        self.grid_rowconfigure(2, weight = 1)
-        self.grid_rowconfigure(3, weight = 0)
-
+        self.grid_rowconfigure(2, weight = 0)
 
         self.titleLabel = ctk.CTkLabel(self, text = f"Settings", font = ("Segoe UI", 80, "bold"))
         self.titleLabel.grid(row = 0, column = 0, pady=10, padx=10, sticky = "nsew")
@@ -205,13 +422,7 @@ class settingsScreen(ctk.CTkFrame):
         self.toggleAppearanceButton = ctk.CTkButton(self, text = "Toggle Appearance", command=self.toggleAppearance)
         self.toggleAppearanceButton.grid(row = 1, column = 0, padx = 10, pady = 10, sticky = "nsew")
 
-        self.cameraFrame = ctk.CTkFrame(self)
-        self.cameraFrame.grid(row = 2, column = 0, pady = 10, padx = 10, sticky = "nsew")
-
-        self.cameraOutput = tk.Canvas(self.cameraFrame)
-        self.cameraOutput.grid(row = 0, column = 0, pady = 10, padx = 10, sticky = "nsew")
-
-        self.escapeButton = ctk.CTkButton(self, text = "Exit", command = self.master.displayMenu, fg_color="#8B0000", hover_color="#610000")
+        self.escapeButton = ctk.CTkButton(self, text = "Return to Main Menu", command = self.master.displayMenu, fg_color="#8B0000", hover_color="#610000")
         self.escapeButton.grid(row = 3, column = 0, pady=10, padx=10, sticky = "nsew")
     
     def toggleAppearance(self):
@@ -295,30 +506,6 @@ class testScreen(ctk.CTkFrame):
 
         file = open(f"video/{dateStr}/raw/data.csv", mode='w', newline='')
         dataWriter = csv.DictWriter(file, fieldnames=["SCPRollF","SCPPitchF","SCPButton","AIDRollF","AIDPitchF","AIDButton"])
-        
-        def serial2Dict(serialString: str):
-            """Function to convert from the string outputted from the Arduino into a dictionary for CSV saving.
-
-            Args:
-                serialString (str): String from Arduino
-
-            Returns:
-                dict: Dictionary explaining what string was
-            """
-            SCP, AID = serialString.split("+")
-            label, data = SCP.split(":")
-            rollSCP, pitchSCP, buttonSCP = data.split("/")
-            label, data = AID.split(":")
-            rollAID, pitchAID, buttonAID = data.split("/")
-            row = {
-                "SCPRollF":rollSCP,
-                "SCPPitchF":pitchSCP,
-                "SCPButton":buttonSCP,
-                "AIDRollF":rollAID,
-                "AIDPitchF":pitchAID,
-                "AIDButton":buttonAID
-            }
-            return row
         
         def toolSampler(csvWriter):
             """Function that will sample the position of an object and write to a dictionary
@@ -949,5 +1136,6 @@ class feedbackScreen(ctk.CTkFrame):
 
 if __name__ == "__main__":
     displayApp = app()
+    cameraProperties = displayApp.cameraProperties
 
     displayApp.mainloop()

@@ -47,7 +47,7 @@ def transMatrix(roll,pitch):
     return T
 
 ################################ CPU Video ############################################ 
-def scenePyRender(scene, mesh, T):
+def scenePyRender(scene, mesh, T, cameraProperties):
     """Function to render a mesh on a scene using a 4x4 matrix
 
     Args:
@@ -115,7 +115,7 @@ def visualizer3dSCPVideoCPU(filename: str, cameraProperties: list, dateStr: str 
         elif button == 1:  # button down
             mesh = trimesh.load_mesh("3dassets/pipette_down.obj")
 
-        img_bgr, mesh_node = scenePyRender(scene,mesh,T) # Scene Renderer
+        img_bgr, mesh_node = scenePyRender(scene,mesh,T, cameraProperties) # Scene Renderer
 
         # Add text to the frame
         cv.putText(img_bgr, f"Single Channel Pipette", (0, 25), cv.FONT_HERSHEY_DUPLEX,
@@ -171,7 +171,7 @@ def visualizer3dAIDVideoCPU(filename: str, cameraProperties: list, dateStr: str 
             mesh = trimesh.load_mesh("3dassets/pipette_down.obj")
             buttonTEXT = "Idle"
 
-        img_bgr, mesh_node = scenePyRender(scene,mesh,T) # Scene Renderer
+        img_bgr, mesh_node = scenePyRender(scene,mesh,T, cameraProperties) # Scene Renderer
 
         # Add text to the frame
         cv.putText(img_bgr, f"Pipette Controller", (0, 25), cv.FONT_HERSHEY_DUPLEX,
