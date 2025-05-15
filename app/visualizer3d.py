@@ -7,17 +7,16 @@ import random
 import trimesh
 from camera import createVideoWriter, getCameraProperties
 from datetime import datetime
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import time
 import open3d as o3d
+import torch
 
 MARGIN = 10  # pixels
 FONT_SIZE = 1
 FONT_THICKNESS = 1
 HANDEDNESS_TEXT_COLOR = (88, 205, 54) # vibrant green
 
-def visualizer3dSCPVideo(filename: str, cameraProperties: list, dateStr: str = "", test: bool = False):
+def visualizer3dSCPVideoCPU(filename: str, cameraProperties: list, dateStr: str = "", test: bool = False):
     # Read the CSV file with transformation data
     dataCSV = pd.read_csv(filename, header=None)
     dataCSV.columns = ['roll', 'pitch', 'button', 'a', 'b', 'c']
@@ -110,7 +109,7 @@ def visualizer3dSCPVideo(filename: str, cameraProperties: list, dateStr: str = "
 
     return videoName
 
-def visualizer3dAIDVideo(filename: str, cameraProperties: list, dateStr: str = "", test: bool = False):
+def visualizer3dAIDVideoCPU(filename: str, cameraProperties: list, dateStr: str = "", test: bool = False):
     # Read the CSV file with transformation data
     dataCSV = pd.read_csv(filename, header=None)
     dataCSV.columns = ['a', 'b', 'c','roll', 'pitch', 'button']
@@ -214,6 +213,172 @@ def visualizer3dAIDVideo(filename: str, cameraProperties: list, dateStr: str = "
 
     return videoName
 
+def visualizer3dSCPVideoGPU(filename: str, cameraProperties: list,  dateStr: str = "", test: bool = False):
+    dataCSV = pd.read_csv(filename, header = None)
+    dataCSV.columns = ['roll', 'pitch', 'button', 'a', 'b', 'c']
+    
+    if test:
+        videoWriter, videoName = createVideoWriter("vistest/model", cameraProperties)
+    else:
+        videoWriter, videoName = createVideoWriter(f"{dateStr}/process/model", cameraProperties)
+
+    # buttonUp = o3d.io.read_triangle_mesh("visualiser/pipette_up.obj")
+    # buttonDown = o3d.io.read_triangle_mesh("visualiser/pipette_down.obj")
+
+    vis = o3d.visualization.Visualizer()
+    print(cameraProperties)
+    vis.create_window(visible=False, width=int(cameraProperties[0]), height=int(cameraProperties[1]))
+
+    T = np.eye(4)
+    # rollOld = 0
+    # pitchOld = 0
+
+    for _, data in dataCSV.iterrows():
+        roll= np.radians(data['roll'])
+        pitch = np.radians(data['pitch'])
+        button = data['button']
+
+        Rx = np.array([
+            [1,0,0],
+            [0, np.cos(roll), -np.sin(roll)],
+            [0, np.sin(roll), np.cos(roll)]
+        ]) # Rotation using roll
+
+        Ry = np.array([
+            [np.cos(pitch), 0, np.sin(pitch)],
+            [0, 1, 0],
+            [-np.sin(pitch), 0, np.cos(pitch)]
+        ]) # Rotation using pitch
+
+        R = Rx @ Ry # Rotation combination
+        T = np.eye(4) # Transformation matrix
+        T[:3,:3] = R
+        # print(T)
+
+        if button == 0: # button down
+            displayObject = o3d.io.read_triangle_mesh("3dassets/pipette_up.obj")
+
+        elif button == 1: # button down
+            displayObject = o3d.io.read_triangle_mesh("3dassets/pipette_down.obj")
+
+        # Clear geometry for next frame (since changing frames)
+        vis.clear_geometries()
+
+        displayObject.transform(T) # Apply previous transformation to the chosen mesh so that smooth animation
+
+        # Add the object to the visualizer
+        vis.add_geometry(displayObject)
+        vis.update_geometry(displayObject)
+        vis.poll_events()
+        vis.update_renderer()
+
+        # Capture frame and write to video
+        img = vis.capture_screen_float_buffer(False)
+        img_np = (np.asarray(img) * 255).astype(np.uint8)
+        img_bgr = cv.cvtColor(img_np, cv.COLOR_RGB2BGR)
+
+        cv.putText(img_bgr, f"Single Channel Pippette",
+        (0, 25), cv.FONT_HERSHEY_DUPLEX,
+        FONT_SIZE/2, (0,0,0), FONT_THICKNESS, cv.LINE_AA)
+
+        cv.putText(img_bgr, f"Roll: {round(data['roll'],2)}, Pitch: {round(data['pitch'],2)}, Button Pressed: {bool(data['button'])}",
+        (0, 50), cv.FONT_HERSHEY_DUPLEX,
+        FONT_SIZE/2, (0,0,0), FONT_THICKNESS, cv.LINE_AA)
+
+        videoWriter.write(img_bgr)
+
+    # Release the video writer and destroy the visualizer window 
+    vis.destroy_window()
+    videoWriter.release()
+
+    return videoName
+
+def visualizer3dAIDVideoGPU(filename: str, cameraProperties: list,  dateStr: str = "", test: bool = False):
+    dataCSV = pd.read_csv(filename, header = None)
+    dataCSV.columns = ['a', 'b', 'c','roll', 'pitch', 'button']
+    
+    if test:
+        videoWriter, videoName = createVideoWriter("vistest/model", cameraProperties)
+    else:
+        videoWriter, videoName = createVideoWriter(f"{dateStr}/process/model", cameraProperties)
+
+    # buttonUp = o3d.io.read_triangle_mesh("visualiser/pipette_up.obj")
+    # buttonDown = o3d.io.read_triangle_mesh("visualiser/pipette_down.obj")
+
+    vis = o3d.visualization.Visualizer()
+    print(cameraProperties)
+    vis.create_window(visible=False, width=int(cameraProperties[0]), height=int(cameraProperties[1]))
+
+    T = np.eye(4)
+    # rollOld = 0
+    # pitchOld = 0
+
+    for _, data in dataCSV.iterrows():
+        roll = np.radians(data['roll'])
+        pitch = np.radians(data['pitch'])
+        button = int(data['button'])
+
+        Rx = np.array([
+            [1,0,0],
+            [0, np.cos(roll), -np.sin(roll)],
+            [0, np.sin(roll), np.cos(roll)]
+        ]) # Rotation using roll
+
+        Ry = np.array([
+            [np.cos(pitch), 0, np.sin(pitch)],
+            [0, 1, 0],
+            [-np.sin(pitch), 0, np.cos(pitch)]
+        ]) # Rotation using pitch
+
+        R = Rx @ Ry # Rotation combination
+        T = np.eye(4) # Transformation matrix
+        T[:3,:3] = R
+        # print(T)
+
+        if button == 0: # no button
+            displayObject = o3d.io.read_triangle_mesh("3dassets/pipette_up.obj")
+
+        elif button == 1: # suck button
+            displayObject = o3d.io.read_triangle_mesh("3dassets/pipette_down.obj")
+        
+        elif button == 10: # release button
+            displayObject = o3d.io.read_triangle_mesh("3dassets/pipette_up.obj")
+
+        elif button == 11: # borken
+            displayObject = o3d.io.read_triangle_mesh("3dassets/pipette_down.obj")
+
+        # Clear geometry for next frame (since changing frames)
+        vis.clear_geometries()
+
+        displayObject.transform(T) # Apply previous transformation to the chosen mesh so that smooth animation
+
+        # Add the object to the visualizer
+        vis.add_geometry(displayObject)
+        vis.update_geometry(displayObject)
+        vis.poll_events()
+        vis.update_renderer()
+
+        # Capture frame and write to video
+        img = vis.capture_screen_float_buffer(False)
+        img_np = (np.asarray(img) * 255).astype(np.uint8)
+        img_bgr = cv.cvtColor(img_np, cv.COLOR_RGB2BGR)
+
+        cv.putText(img_bgr, f"Single Channel Pippette",
+        (0, 25), cv.FONT_HERSHEY_DUPLEX,
+        FONT_SIZE/2, (0,0,0), FONT_THICKNESS, cv.LINE_AA)
+
+        cv.putText(img_bgr, f"Roll: {round(data['roll'],2)}, Pitch: {round(data['pitch'],2)}, Button Pressed: {bool(data['button'])}",
+        (0, 50), cv.FONT_HERSHEY_DUPLEX,
+        FONT_SIZE/2, (0,0,0), FONT_THICKNESS, cv.LINE_AA)
+
+        videoWriter.write(img_bgr)
+
+    # Release the video writer and destroy the visualizer window 
+    vis.destroy_window()
+    videoWriter.release()
+
+    return videoName
+
 def generate_random_transform_csv(num_samples):
     """Used to generate random csv to test above code.
 
@@ -298,11 +463,11 @@ def generate_sweep_csv(num_per_sweep: int = 360, toggle_interval: int = 90):
             scpButton = 1 - scpButton
         scpButtonList.append(scpButton)
 
-    idle = np.full(num_per_sweep/2,'00') # 00
-    suck = np.full(num_per_sweep/2,'01') # 01
-    release = np.full(num_per_sweep/2,'10') # 10
-    broke = np.full(num_per_sweep/2,'11') # 11
-    aidButtonList=list(np.concatenate(idle,suck,release,broke))
+    idle = np.full(int(num_per_sweep/2),'00') # 00
+    suck = np.full(int(num_per_sweep/2),'01') # 01
+    release = np.full(int(num_per_sweep/2),'10') # 10
+    broke = np.full(int(num_per_sweep/2),'11') # 11
+    aidButtonList=list(np.concatenate((idle,suck,release,broke)))
 
     # Create DataFrame
     data = {
@@ -321,6 +486,15 @@ def generate_sweep_csv(num_per_sweep: int = 360, toggle_interval: int = 90):
 
     return filename
 
+if torch.cuda.is_available():
+    visualizer3dSCPVideo = visualizer3dSCPVideoGPU
+    visualizer3dAIDVideo = visualizer3dAIDVideoGPU
+    print("Visualise on GPU")
+else:
+    visualizer3dSCPVideo = visualizer3dSCPVideoCPU
+    visualizer3dAIDVideo = visualizer3dAIDVideoCPU
+    print("Visualise on CPU")
+
 if __name__=="__main__":
     # print("Using Mesa OpenGL:", os.path.exists("opengl32.dll"))
 
@@ -338,10 +512,14 @@ if __name__=="__main__":
     randomTestFile = generate_sweep_csv()
     
     pyrendertime = time.time()
-    animatedVideo = visualizer3dSCPVideo(randomTestFile, cameraProperties, test = True)
+    animatedVideo = visualizer3dSCPVideoCPU(randomTestFile, cameraProperties, test = True)
     pyrendertime = time.time() - pyrendertime
-    print(pyrendertime)
 
+    o3drendertime = time.time()
+    animatedVideo = visualizer3dSCPVideoGPU(randomTestFile, cameraProperties, test = True)
+    o3drendertime = time.time() - o3drendertime
+
+    print(pyrendertime,o3drendertime)
     # footage = cv.VideoCapture(animatedVideo)
 
     # while True:
