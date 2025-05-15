@@ -873,7 +873,7 @@ class processVideoScreen(ctk.CTkFrame):
                     retAID, frameAID = AIDFootage.read()
 
                     if retCam and retSCP and retAID:
-                        frame = np.hstack((frameCam,frameSCP,frameAID))
+                        frame = np.hstack((frameSCP,frameCam,frameAID))
                         videoWriter.write(frame)
 
                         framePIL = convertCVtoPIL(frame)
