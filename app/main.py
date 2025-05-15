@@ -97,29 +97,39 @@ class app(ctk.CTk):
         self.display.grid(row=0, column = 0, pady=10, padx=10, sticky = "nsew")
         self.update()
     
-    def displaySingleChannel(self):
+    def displaySingleChannelTest(self):
         """Function to record screen for Single Channel Pipette Use
         """
         self.tool = 0
-        self.display = recordScreen(self, 0)
+        self.display = testScreen(self, 0)
         self.display.grid(row=0, column = 0, pady=10, padx=10, sticky = "nsew")
         self.update()
 
-    def displayPipetteAid(self):
+    def displayPipetteAidTest(self):
         """Function to record screen for Pipette Aid Use
         """
         self.tool = 1
-        self.display = recordScreen(self, 1)
+        self.display = testScreen(self, 1)
         self.display.grid(row=0, column = 0, pady=10, padx=10, sticky = "nsew")
         self.update()
-
-    def displayProcessVideo(self, usage: str, dateStr):
+    
+    def displaySettings(self):
         """Function to playback video with annotations
 
         Args:
             usage (str): One word description of what the recording was about
         """
-        self.display = processVideoScreen(self, usage, dateStr)
+        self.display = settingsScreen(self)
+        self.display.grid(row=0, column = 0, pady=10, padx=10, sticky = "nsew")
+        self.update()
+
+    def displayFeedback(self, usage: str, dateStr):
+        """Function to playback video with feedback
+
+        Args:
+            usage (str): One word description of what the recording was about
+        """
+        self.display = feedbackScreen(self, usage, dateStr)
         self.display.grid(row=0, column = 0, pady=10, padx=10, sticky = "nsew")
         self.update()
     
@@ -128,32 +138,6 @@ class app(ctk.CTk):
         """
         self.cap.release()
         self.destroy()
-
-class menuFrame(ctk.CTkFrame):
-    """Frame used as the application menu
-    """
-    def __init__(self, master, fg_color = None):
-        super().__init__(master, width = 2000, height = 2000)
-
-        self.grid_columnconfigure(0, weight = 1)
-        self.grid_rowconfigure(0, weight = 1)
-        self.grid_rowconfigure(1, weight = 0, uniform="cell") # Single Channel Pipette
-        self.grid_rowconfigure(2, weight = 0, uniform="cell") # Pipette Aid
-        self.grid_rowconfigure(3, weight = 0, uniform="cell") # Close App
-        self.grid_rowconfigure(4, weight = 0, uniform="cell") # Calibrate
-
-        
-        self.titleLabel = ctk.CTkLabel(self, text = "Cell Culture Training", font = ("Segoe UI", 100, "bold"))
-        self.titleLabel.grid(row = 0, column = 0, pady=10, padx=10, sticky = "nsew")
-
-        self.singleChannelPippetteButton = ctk.CTkButton(self, text = "Assess Single Channel Pippetting", command = master.displaySingleChannel)
-        self.singleChannelPippetteButton.grid(row = 1, column = 0, pady=10, padx=10, sticky = "nsew")
-
-        self.pippetteAidButton = ctk.CTkButton(self, text = "Assess Pipette Aid", command = master.displayPipetteAid)
-        self.pippetteAidButton.grid(row = 2, column = 0, pady=10, padx=10, sticky = "nsew")
-         
-        self.escapeButton = ctk.CTkButton(self, text = "Exit", command = master.close, fg_color="red", hover_color="red")
-        self.escapeButton.grid(row = 3, column = 0, pady=10, padx=10, sticky = "nsew")
 
 class loadingFrame(ctk.CTkFrame):
     """Frame used for loading screen
@@ -175,8 +159,72 @@ class loadingFrame(ctk.CTkFrame):
         self.loadImage = ctk.CTkLabel(self, image=loadingImage, text="")
         self.loadImage.grid(row=0, column = 0, pady=10, padx=10, sticky = "nsew")
 
-class recordScreen(ctk.CTkFrame):
-    """Frame used to record webcam footage
+class menuFrame(ctk.CTkFrame):
+    """Frame used as the application menu
+    """
+    def __init__(self, master, fg_color = None):
+        super().__init__(master, width = 2000, height = 2000)
+
+        self.grid_columnconfigure(0, weight = 1)
+        self.grid_rowconfigure(0, weight = 1)
+        self.grid_rowconfigure(1, weight = 0, uniform="cell") # Single Channel Pipette
+        self.grid_rowconfigure(2, weight = 0, uniform="cell") # Pipette Aid
+        self.grid_rowconfigure(3, weight = 0, uniform="cell") # Calibrate
+        self.grid_rowconfigure(4, weight = 0, uniform="cell") # Close App
+
+        self.titleLabel = ctk.CTkLabel(self, text = "Cell Culture Training", font = ("Segoe UI", 100, "bold"))
+        self.titleLabel.grid(row = 0, column = 0, pady=10, padx=10, sticky = "new")
+
+        self.singleChannelPippetteButton = ctk.CTkButton(self, text = "Assess Single Channel Pippetting", command = master.displaySingleChannelTest)
+        self.singleChannelPippetteButton.grid(row = 1, column = 0, pady=10, padx=10, sticky = "nsew")
+
+        self.pippetteAidButton = ctk.CTkButton(self, text = "Assess Pipette Aid", command = master.displayPipetteAidTest)
+        self.pippetteAidButton.grid(row = 2, column = 0, pady=10, padx=10, sticky = "nsew")
+
+        self.settingsButton = ctk.CTkButton(self, text = "Settings", fg_color="#006400", hover_color="#003C00", command = master.displaySettings)
+        self.settingsButton.grid(row = 3, column = 0, pady=10, padx=10, sticky = "nsew")
+         
+        self.escapeButton = ctk.CTkButton(self, text = "Exit", command = master.close, fg_color="#8B0000", hover_color="#610000")
+        self.escapeButton.grid(row = 4, column = 0, pady=10, padx=10, sticky = "nsew")
+
+class settingsScreen(ctk.CTkFrame):
+    """Frame used to change settings in the app
+    """
+    def __init__(self, master):
+        super().__init__(master)
+        self.grid_columnconfigure(0, weight = 1)
+        self.grid_rowconfigure(0, weight = 0)
+        self.grid_rowconfigure(1, weight = 0) 
+        self.grid_rowconfigure(2, weight = 1)
+        self.grid_rowconfigure(3, weight = 0)
+
+
+        self.titleLabel = ctk.CTkLabel(self, text = f"Settings", font = ("Segoe UI", 80, "bold"))
+        self.titleLabel.grid(row = 0, column = 0, pady=10, padx=10, sticky = "nsew")
+
+        self.toggleAppearanceButton = ctk.CTkButton(self, text = "Toggle Appearance", command=self.toggleAppearance)
+        self.toggleAppearanceButton.grid(row = 1, column = 0, padx = 10, pady = 10, sticky = "nsew")
+
+        self.cameraFrame = ctk.CTkFrame(self)
+        self.cameraFrame.grid(row = 2, column = 0, pady = 10, padx = 10, sticky = "nsew")
+
+        self.cameraOutput = tk.Canvas(self.cameraFrame)
+        self.cameraOutput.grid(row = 0, column = 0, pady = 10, padx = 10, sticky = "nsew")
+
+        self.escapeButton = ctk.CTkButton(self, text = "Exit", command = self.master.displayMenu, fg_color="#8B0000", hover_color="#610000")
+        self.escapeButton.grid(row = 3, column = 0, pady=10, padx=10, sticky = "nsew")
+    
+    def toggleAppearance(self):
+        currentMode = ctk.get_appearance_mode()
+
+        if currentMode == 'Dark':
+            ctk.set_appearance_mode("Light")
+        
+        elif currentMode == 'Light':
+            ctk.set_appearance_mode("Dark")
+
+class testScreen(ctk.CTkFrame):
+    """Frame used to test people's skills
     """
     def __init__(self, master, usage: int):
         super().__init__(master)
@@ -195,11 +243,6 @@ class recordScreen(ctk.CTkFrame):
         self.grid_rowconfigure(0, weight = 0)
         self.grid_rowconfigure(1, weight = 1) 
         self.grid_rowconfigure(2, weight = 0) 
-        
-        ### PUT PLACEHOLDER IMAGE WHILST CAMERA IS OFF
-        # self.placeholder = ctk.CTkImage(light_image=Image.open("loadingGraphics/wait.jpg"),
-        #                     dark_image=Image.open("loadingGraphics/wait.jpg"),
-        #                     size=(1280, 720))
         
         self.titleLabel = ctk.CTkLabel(self, text = f"Recording", font = ("Segoe UI", 80, "bold"))
         self.titleLabel.grid(row = 0, column = 0, pady=10, padx=10, sticky = "nsew")
@@ -495,7 +538,7 @@ class recordScreen(ctk.CTkFrame):
         file.close()
         sampleCount[0] = sampleCount[0]-1
         self.master.toolSampleRange = sampleCount
-        self.master.displayProcessVideo(self.no, dateStr)
+        self.master.displayFeedback(self.no, dateStr)
         self.destroy()
 
     def endVideo(self):
@@ -506,7 +549,7 @@ class recordScreen(ctk.CTkFrame):
         # self.cameraFrame.grid(row = 1, column = 0, pady = 10, padx = 10, sticky = "nsew")
         self.update()
 
-class processVideoScreen(ctk.CTkFrame):
+class feedbackScreen(ctk.CTkFrame):
     """Frame to play video after processing and analysis
     """
     def __init__(self, master, usage: int, dateStr: str):
@@ -903,7 +946,6 @@ class processVideoScreen(ctk.CTkFrame):
     def exit(self):
         self.master.displayMenu()
         self.destroy
-
 
 if __name__ == "__main__":
     displayApp = app()
