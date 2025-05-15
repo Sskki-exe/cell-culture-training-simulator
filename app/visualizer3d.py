@@ -15,6 +15,78 @@ MARGIN = 10  # pixels
 FONT_SIZE = 1
 FONT_THICKNESS = 1
 HANDEDNESS_TEXT_COLOR = (88, 205, 54) # vibrant green
+################################ Transformation ############################################ 
+def transMatrix(roll,pitch):
+    """Function to calculate transformation matrix based off roll and pitch
+
+    Args:
+        roll (np.radians): Roll of object in radians
+        pitch (np.radians): Pitch of object in radians
+
+    Returns:
+        4x4 np.array: Transformation matrix based off roll and pitch
+    """
+    # Compute rotation matrices for roll and pitch
+    Rx = np.array([
+        [1, 0, 0],
+        [0, np.cos(roll), -np.sin(roll)],
+        [0, np.sin(roll), np.cos(roll)]
+    ])  # Rotation using roll
+
+    Ry = np.array([
+        [np.cos(pitch), 0, np.sin(pitch)],
+        [0, 1, 0],
+        [-np.sin(pitch), 0, np.cos(pitch)]
+    ])  # Rotation using pitch
+
+    # Combine roll and pitch rotations
+    R = Rx @ Ry  
+    T = np.eye(4)
+    T[:3, :3] = R
+
+    return T
+
+################################ CPU Video ############################################ 
+def scenePyRender(scene, mesh, T):
+    """Function to render a mesh on a scene using a 4x4 matrix
+
+    Args:
+        scene (pyrender.Scene): Scene for showing object
+        mesh (trimesh): Object mesh
+        T : 4x4 Transformation Matrix
+
+    Returns:
+        img_bgr, mesh_node: OpenCV frame, mesh_node
+    """
+    # Apply the transformation to the mesh
+    mesh.apply_transform(T)
+
+    # Create a Pyrender mesh from the Trimesh object
+    pyrender_mesh = pyrender.Mesh.from_trimesh(mesh)
+
+    # Create a Pyrender node for the mesh and add it to the scene
+    mesh_node = scene.add(pyrender_mesh)
+
+    # Set up the camera (Position it in front of the mesh)
+    camera = pyrender.PerspectiveCamera(yfov=np.pi / 3.0, aspectRatio=cameraProperties[0] / cameraProperties[1])
+
+    # Move the camera further away from the object on the Z-axis
+    camera_pose = np.eye(4)
+    camera_pose[:3, 3] = [0, 0, 30]  # Move the camera even further on the Z-axis (increase the value)
+    scene.add(camera, pose=camera_pose)
+
+    # Set up a light source in the scene
+    light = pyrender.DirectionalLight(color=np.ones(3), intensity=3.0)
+    scene.add(light, pose=camera_pose)
+
+    # Set up offscreen rendering with Pyrender
+    r = pyrender.OffscreenRenderer(int(cameraProperties[0]), int(cameraProperties[1]))
+    color, depth = r.render(scene)
+
+    # Convert the color image to OpenCV BGR format
+    img_bgr = cv.cvtColor(color, cv.COLOR_RGB2BGR)
+
+    return img_bgr, mesh_node
 
 def visualizer3dSCPVideoCPU(filename: str, cameraProperties: list, dateStr: str = "", test: bool = False):
     # Read the CSV file with transformation data
@@ -30,31 +102,12 @@ def visualizer3dSCPVideoCPU(filename: str, cameraProperties: list, dateStr: str 
     # Pyrender setup (create a Pyrender scene)
     scene = pyrender.Scene()
 
-    # Track the node added for each mesh for removal later
-    mesh_nodes = []
-
     for rowIndex, data in dataCSV.iterrows():
         roll = np.radians(data['roll'])
         pitch = np.radians(data['pitch'])
         button = data['button']
 
-        # Compute rotation matrices for roll and pitch
-        Rx = np.array([
-            [1, 0, 0],
-            [0, np.cos(roll), -np.sin(roll)],
-            [0, np.sin(roll), np.cos(roll)]
-        ])  # Rotation using roll
-
-        Ry = np.array([
-            [np.cos(pitch), 0, np.sin(pitch)],
-            [0, 1, 0],
-            [-np.sin(pitch), 0, np.cos(pitch)]
-        ])  # Rotation using pitch
-
-        # Combine roll and pitch rotations
-        R = Rx @ Ry  
-        T = np.eye(4)
-        T[:3, :3] = R
+        T = transMatrix(roll,pitch) # Calculate transformation matrix
 
         # Load the appropriate mesh based on the button state
         if button == 0:  # button down
@@ -62,34 +115,7 @@ def visualizer3dSCPVideoCPU(filename: str, cameraProperties: list, dateStr: str 
         elif button == 1:  # button down
             mesh = trimesh.load_mesh("3dassets/pipette_down.obj")
 
-        # Apply the transformation to the mesh
-        mesh.apply_transform(T)
-
-        # Create a Pyrender mesh from the Trimesh object
-        pyrender_mesh = pyrender.Mesh.from_trimesh(mesh)
-
-        # Create a Pyrender node for the mesh and add it to the scene
-        mesh_node = scene.add(pyrender_mesh)
-        mesh_nodes.append(mesh_node)
-
-        # Set up the camera (Position it in front of the mesh)
-        camera = pyrender.PerspectiveCamera(yfov=np.pi / 3.0, aspectRatio=cameraProperties[0] / cameraProperties[1])
-
-        # Move the camera further away from the object on the Z-axis
-        camera_pose = np.eye(4)
-        camera_pose[:3, 3] = [0, 0, 30]  # Move the camera even further on the Z-axis (increase the value)
-        scene.add(camera, pose=camera_pose)
-
-        # Set up a light source in the scene
-        light = pyrender.DirectionalLight(color=np.ones(3), intensity=3.0)
-        scene.add(light, pose=camera_pose)
-
-        # Set up offscreen rendering with Pyrender
-        r = pyrender.OffscreenRenderer(int(cameraProperties[0]), int(cameraProperties[1]))
-        color, depth = r.render(scene)
-
-        # Convert the color image to OpenCV BGR format
-        img_bgr = cv.cvtColor(color, cv.COLOR_RGB2BGR)
+        img_bgr, mesh_node = scenePyRender(scene,mesh,T) # Scene Renderer
 
         # Add text to the frame
         cv.putText(img_bgr, f"Single Channel Pipette", (0, 25), cv.FONT_HERSHEY_DUPLEX,
@@ -124,33 +150,12 @@ def visualizer3dAIDVideoCPU(filename: str, cameraProperties: list, dateStr: str 
     scene = pyrender.Scene()
 
     # Track the node added for each mesh for removal later
-    mesh_nodes = []
-
     for rowIndex, data in dataCSV.iterrows():
         roll = np.radians(data['roll'])
         pitch = np.radians(data['pitch'])
         button = int(data['button'])
 
-        if button > 0:
-            pass
-
-        # Compute rotation matrices for roll and pitch
-        Rx = np.array([
-            [1, 0, 0],
-            [0, np.cos(roll), -np.sin(roll)],
-            [0, np.sin(roll), np.cos(roll)]
-        ])  # Rotation using roll
-
-        Ry = np.array([
-            [np.cos(pitch), 0, np.sin(pitch)],
-            [0, 1, 0],
-            [-np.sin(pitch), 0, np.cos(pitch)]
-        ])  # Rotation using pitch
-
-        # Combine roll and pitch rotations
-        R = Rx @ Ry  
-        T = np.eye(4)
-        T[:3, :3] = R
+        T = transMatrix(roll,pitch) # Calculate transformation matrix
 
         # Load the appropriate mesh based on the button state
         if button == 0:  # IDLE
@@ -166,34 +171,7 @@ def visualizer3dAIDVideoCPU(filename: str, cameraProperties: list, dateStr: str 
             mesh = trimesh.load_mesh("3dassets/pipette_down.obj")
             buttonTEXT = "Idle"
 
-        # Apply the transformation to the mesh
-        mesh.apply_transform(T)
-
-        # Create a Pyrender mesh from the Trimesh object
-        pyrender_mesh = pyrender.Mesh.from_trimesh(mesh)
-
-        # Create a Pyrender node for the mesh and add it to the scene
-        mesh_node = scene.add(pyrender_mesh)
-        mesh_nodes.append(mesh_node)
-
-        # Set up the camera (Position it in front of the mesh)
-        camera = pyrender.PerspectiveCamera(yfov=np.pi / 3.0, aspectRatio=cameraProperties[0] / cameraProperties[1])
-
-        # Move the camera further away from the object on the Z-axis
-        camera_pose = np.eye(4)
-        camera_pose[:3, 3] = [0, 0, 30]  # Move the camera even further on the Z-axis (increase the value)
-        scene.add(camera, pose=camera_pose)
-
-        # Set up a light source in the scene
-        light = pyrender.DirectionalLight(color=np.ones(3), intensity=3.0)
-        scene.add(light, pose=camera_pose)
-
-        # Set up offscreen rendering with Pyrender
-        r = pyrender.OffscreenRenderer(int(cameraProperties[0]), int(cameraProperties[1]))
-        color, depth = r.render(scene)
-
-        # Convert the color image to OpenCV BGR format
-        img_bgr = cv.cvtColor(color, cv.COLOR_RGB2BGR)
+        img_bgr, mesh_node = scenePyRender(scene,mesh,T) # Scene Renderer
 
         # Add text to the frame
         cv.putText(img_bgr, f"Pipette Controller", (0, 25), cv.FONT_HERSHEY_DUPLEX,
@@ -213,6 +191,35 @@ def visualizer3dAIDVideoCPU(filename: str, cameraProperties: list, dateStr: str 
 
     return videoName
 
+################################ GPU Video ############################################ 
+def sceneo3d(vis, displayObject, T):
+    """Function to render a mesh on a scene using a 4x4 matrix
+
+    Args:
+        scene (pyrender.Scene): Scene for showing object
+        mesh (trimesh): Object mesh
+        T : 4x4 Transformation Matrix
+
+    Returns:
+        img_bgr, mesh_node: OpenCV frame, mesh_node
+    """
+    # Clear geometry for next frame (since changing frames)
+    vis.clear_geometries()
+
+    displayObject.transform(T) # Apply previous transformation to the chosen mesh so that smooth animation
+
+    # Add the object to the visualizer
+    vis.add_geometry(displayObject)
+    vis.update_geometry(displayObject)
+    vis.poll_events()
+    vis.update_renderer()
+
+    # Capture frame and write to video
+    img = vis.capture_screen_float_buffer(False)
+    img_np = (np.asarray(img) * 255).astype(np.uint8)
+    img_bgr = cv.cvtColor(img_np, cv.COLOR_RGB2BGR)
+    return img_bgr
+
 def visualizer3dSCPVideoGPU(filename: str, cameraProperties: list,  dateStr: str = "", test: bool = False):
     dataCSV = pd.read_csv(filename, header = None)
     dataCSV.columns = ['roll', 'pitch', 'button', 'a', 'b', 'c']
@@ -222,38 +229,15 @@ def visualizer3dSCPVideoGPU(filename: str, cameraProperties: list,  dateStr: str
     else:
         videoWriter, videoName = createVideoWriter(f"{dateStr}/process/model", cameraProperties)
 
-    # buttonUp = o3d.io.read_triangle_mesh("visualiser/pipette_up.obj")
-    # buttonDown = o3d.io.read_triangle_mesh("visualiser/pipette_down.obj")
-
     vis = o3d.visualization.Visualizer()
-    print(cameraProperties)
     vis.create_window(visible=False, width=int(cameraProperties[0]), height=int(cameraProperties[1]))
-
-    T = np.eye(4)
-    # rollOld = 0
-    # pitchOld = 0
 
     for _, data in dataCSV.iterrows():
         roll= np.radians(data['roll'])
         pitch = np.radians(data['pitch'])
         button = data['button']
 
-        Rx = np.array([
-            [1,0,0],
-            [0, np.cos(roll), -np.sin(roll)],
-            [0, np.sin(roll), np.cos(roll)]
-        ]) # Rotation using roll
-
-        Ry = np.array([
-            [np.cos(pitch), 0, np.sin(pitch)],
-            [0, 1, 0],
-            [-np.sin(pitch), 0, np.cos(pitch)]
-        ]) # Rotation using pitch
-
-        R = Rx @ Ry # Rotation combination
-        T = np.eye(4) # Transformation matrix
-        T[:3,:3] = R
-        # print(T)
+        T = transMatrix(roll,pitch) # Calculate transformation matrix
 
         if button == 0: # button down
             displayObject = o3d.io.read_triangle_mesh("3dassets/pipette_up.obj")
@@ -261,21 +245,7 @@ def visualizer3dSCPVideoGPU(filename: str, cameraProperties: list,  dateStr: str
         elif button == 1: # button down
             displayObject = o3d.io.read_triangle_mesh("3dassets/pipette_down.obj")
 
-        # Clear geometry for next frame (since changing frames)
-        vis.clear_geometries()
-
-        displayObject.transform(T) # Apply previous transformation to the chosen mesh so that smooth animation
-
-        # Add the object to the visualizer
-        vis.add_geometry(displayObject)
-        vis.update_geometry(displayObject)
-        vis.poll_events()
-        vis.update_renderer()
-
-        # Capture frame and write to video
-        img = vis.capture_screen_float_buffer(False)
-        img_np = (np.asarray(img) * 255).astype(np.uint8)
-        img_bgr = cv.cvtColor(img_np, cv.COLOR_RGB2BGR)
+        img_bgr = sceneo3d(vis,displayObject,T)
 
         cv.putText(img_bgr, f"Single Channel Pippette",
         (0, 25), cv.FONT_HERSHEY_DUPLEX,
@@ -302,74 +272,40 @@ def visualizer3dAIDVideoGPU(filename: str, cameraProperties: list,  dateStr: str
     else:
         videoWriter, videoName = createVideoWriter(f"{dateStr}/process/model", cameraProperties)
 
-    # buttonUp = o3d.io.read_triangle_mesh("visualiser/pipette_up.obj")
-    # buttonDown = o3d.io.read_triangle_mesh("visualiser/pipette_down.obj")
-
     vis = o3d.visualization.Visualizer()
-    print(cameraProperties)
     vis.create_window(visible=False, width=int(cameraProperties[0]), height=int(cameraProperties[1]))
-
-    T = np.eye(4)
-    # rollOld = 0
-    # pitchOld = 0
 
     for _, data in dataCSV.iterrows():
         roll = np.radians(data['roll'])
         pitch = np.radians(data['pitch'])
         button = int(data['button'])
 
-        Rx = np.array([
-            [1,0,0],
-            [0, np.cos(roll), -np.sin(roll)],
-            [0, np.sin(roll), np.cos(roll)]
-        ]) # Rotation using roll
-
-        Ry = np.array([
-            [np.cos(pitch), 0, np.sin(pitch)],
-            [0, 1, 0],
-            [-np.sin(pitch), 0, np.cos(pitch)]
-        ]) # Rotation using pitch
-
-        R = Rx @ Ry # Rotation combination
-        T = np.eye(4) # Transformation matrix
-        T[:3,:3] = R
-        # print(T)
+        T = transMatrix(roll,pitch) # Calculate transformation matrix
 
         if button == 0: # no button
             displayObject = o3d.io.read_triangle_mesh("3dassets/pipette_up.obj")
+            buttonTEXT = "Idle"
 
         elif button == 1: # suck button
             displayObject = o3d.io.read_triangle_mesh("3dassets/pipette_down.obj")
+            buttonTEXT = "Suck"
         
         elif button == 10: # release button
             displayObject = o3d.io.read_triangle_mesh("3dassets/pipette_up.obj")
+            buttonTEXT = "Release"
 
         elif button == 11: # borken
             displayObject = o3d.io.read_triangle_mesh("3dassets/pipette_down.obj")
+            buttonTEXT = "Idle"
 
-        # Clear geometry for next frame (since changing frames)
-        vis.clear_geometries()
+        img_bgr = sceneo3d(vis,displayObject,T)
 
-        displayObject.transform(T) # Apply previous transformation to the chosen mesh so that smooth animation
+        # Add text to the frame
+        cv.putText(img_bgr, f"Pipette Controller", (0, 25), cv.FONT_HERSHEY_DUPLEX,
+                   0.5, (0, 0, 0), 1, cv.LINE_AA)
 
-        # Add the object to the visualizer
-        vis.add_geometry(displayObject)
-        vis.update_geometry(displayObject)
-        vis.poll_events()
-        vis.update_renderer()
-
-        # Capture frame and write to video
-        img = vis.capture_screen_float_buffer(False)
-        img_np = (np.asarray(img) * 255).astype(np.uint8)
-        img_bgr = cv.cvtColor(img_np, cv.COLOR_RGB2BGR)
-
-        cv.putText(img_bgr, f"Single Channel Pippette",
-        (0, 25), cv.FONT_HERSHEY_DUPLEX,
-        FONT_SIZE/2, (0,0,0), FONT_THICKNESS, cv.LINE_AA)
-
-        cv.putText(img_bgr, f"Roll: {round(data['roll'],2)}, Pitch: {round(data['pitch'],2)}, Button Pressed: {bool(data['button'])}",
-        (0, 50), cv.FONT_HERSHEY_DUPLEX,
-        FONT_SIZE/2, (0,0,0), FONT_THICKNESS, cv.LINE_AA)
+        cv.putText(img_bgr, f"Roll: {round(data['roll'], 2)}, Pitch: {round(data['pitch'], 2)}, Button Pressed: {buttonTEXT}",
+                   (0, 50), cv.FONT_HERSHEY_DUPLEX, 0.5, (0, 0, 0), 1, cv.LINE_AA)
 
         videoWriter.write(img_bgr)
 
@@ -378,7 +314,7 @@ def visualizer3dAIDVideoGPU(filename: str, cameraProperties: list,  dateStr: str
     videoWriter.release()
 
     return videoName
-
+################################ CSV Test File Generators ############################################ 
 def generate_random_transform_csv(num_samples):
     """Used to generate random csv to test above code.
 
@@ -509,8 +445,8 @@ if __name__=="__main__":
     cap.release()
 
     # Test visualisation
-    randomTestFile = generate_random_transform_csv(150)
-    randomTestFile = generate_sweep_csv()
+    # randomTestFile = generate_random_transform_csv(150)
+    randomTestFile = generate_sweep_csv(40,20)
     
     pyrendertime = time.time()
     animatedVideo = visualizer3dSCPVideoCPU(randomTestFile, cameraProperties, test = True)
