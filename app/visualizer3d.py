@@ -5,9 +5,12 @@ import os
 import pyrender
 import random
 import trimesh
-import open3d as o3d
 from camera import createVideoWriter, getCameraProperties
 from datetime import datetime
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+import time
+import open3d as o3d
 
 MARGIN = 10  # pixels
 FONT_SIZE = 1
@@ -288,18 +291,27 @@ def generate_sweep_csv(num_per_sweep: int = 360, toggle_interval: int = 90):
     pitch = np.concatenate((pitch_1, pitch_2))
 
     # Generate flag that toggles every 90 samples
-    object_flag = []
-    current_flag = 0
+    scpButtonList = []
+    scpButton = 0
     for i in range(0, len(roll)):
         if i % toggle_interval == 0:
-            current_flag = 1 - current_flag
-        object_flag.append(current_flag)
+            scpButton = 1 - scpButton
+        scpButtonList.append(scpButton)
+
+    idle = np.full(num_per_sweep/2,'00') # 00
+    suck = np.full(num_per_sweep/2,'01') # 01
+    release = np.full(num_per_sweep/2,'10') # 10
+    broke = np.full(num_per_sweep/2,'11') # 11
+    aidButtonList=list(np.concatenate(idle,suck,release,broke))
 
     # Create DataFrame
     data = {
-        'roll': roll,
-        'pitch': pitch,
-        'object_flag': object_flag
+        'rollSCP': roll,
+        'pitchSCP': pitch,
+        'buttonSCP': scpButtonList,
+        'rollAID': roll,
+        'pitchAID': pitch,
+        'buttonAID': aidButtonList
     }
     df = pd.DataFrame(data)
 
@@ -322,25 +334,28 @@ if __name__=="__main__":
 
     cap.release()
 
-    randomTestFile = generate_random_transform_csv(150)
-    # randomTestFile = generate_sweep_csv()
-
-    animatedVideo = visualizer3dAIDVideo(randomTestFile, cameraProperties, test = True)
-
-    footage = cv.VideoCapture(animatedVideo)
-
-    while True:
-        ret, frame = footage.read()
-        if ret:
-            cv.imshow("frame", frame)
-
-        if cv.waitKey(1) == ord('q'):
-            break
-
-        if not ret:
-            break
+    # randomTestFile = generate_random_transform_csv(150)
+    randomTestFile = generate_sweep_csv()
     
-    footage.release()
+    pyrendertime = time.time()
+    animatedVideo = visualizer3dSCPVideo(randomTestFile, cameraProperties, test = True)
+    pyrendertime = time.time() - pyrendertime
+    print(pyrendertime)
+
+    # footage = cv.VideoCapture(animatedVideo)
+
+    # while True:
+    #     ret, frame = footage.read()
+    #     if ret:
+    #         cv.imshow("frame", frame)
+
+    #     if cv.waitKey(1) == ord('q'):
+    #         break
+
+    #     if not ret:
+    #         break
+    
+    # footage.release()
 
 
 
