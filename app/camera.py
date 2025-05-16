@@ -123,7 +123,7 @@ def displayVideo(videoName: str):
 
     
 if __name__ == "__main__":
-    cap = cv.VideoCapture(0)
+    cap = cv.VideoCapture(1)
     
     if not cap.isOpened:
         print("Camera brokey")
@@ -139,40 +139,40 @@ if __name__ == "__main__":
 
     # displayVideo(testName)
 
-    save_dir = "calibration_images"
-    os.makedirs(save_dir, exist_ok=True)
+    # save_dir = "calibration_images"
+    # os.makedirs(save_dir, exist_ok=True)
 
-    img_counter = 0
+    # img_counter = 0
 
-    print("Press SPACE to capture image, ESC to exit.")
-
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            print("Failed to grab frame.")
-            break
-
-        cv.imshow("Camera", frame)
-
-        key = cv.waitKey(1)
-
-        if key % 256 == 27:  # ESC key
-            print("Exiting...")
-            break
-        elif key % 256 == 32:  # SPACE key
-            img_name = f"{save_dir}/image_{img_counter:03}.jpg"
-            cv.imwrite(img_name, frame)
-            print(f"{img_name} saved.")
-            img_counter += 1
-
-    # Release resources
-    cap.release()
-    cv.destroyAllWindows()
+    # print("Press SPACE to capture image, ESC to exit.")
 
     # while True:
     #     ret, frame = cap.read()
-    #     if ret:
-    #         cv.imshow("frame", frame)
+    #     if not ret:
+    #         print("Failed to grab frame.")
+    #         break
 
-    #         if cv.waitKey(1) == ord("q"):
-    #             break
+    #     cv.imshow("Camera", frame)
+
+    #     key = cv.waitKey(1)
+
+    #     if key % 256 == 27:  # ESC key
+    #         print("Exiting...")
+    #         break
+    #     elif key % 256 == 32:  # SPACE key
+    #         img_name = f"{save_dir}/image_{img_counter:03}.jpg"
+    #         cv.imwrite(img_name, frame)
+    #         print(f"{img_name} saved.")
+    #         img_counter += 1
+
+    # # Release resources
+    # cap.release()
+    # cv.destroyAllWindows()
+
+    while True:
+        ret, frame = cap.read()
+        if ret:
+            cv.imshow("frame", frame)
+
+            if cv.waitKey(1) == ord("q"):
+                break

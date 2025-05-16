@@ -82,7 +82,7 @@ class app(ctk.CTk):
         self.update()
 
         # Camera Initialisation
-        self.cap = cv.VideoCapture(0)
+        self.cap = cv.VideoCapture(1)
         if not self.cap.isOpened:
             print("Camera brokey")
             self.destroy()
@@ -133,16 +133,14 @@ class app(ctk.CTk):
     def displaySingleChannelPractise(self):
         """Function to record screen for Single Channel Pipette Use
         """
-        self.tool = 1
-        self.display = practiseToolScreen(self, 1)
+        self.display = practiseToolScreen(self, 0)
         self.display.grid(row=0, column = 0, pady=10, padx=10, sticky = "nsew")
         self.update()
 
     def displayPipetteAidPractise(self):
         """Function to record screen for Pipette Aid Use
         """
-        self.tool = 2
-        self.display = practiseToolScreen(self, 2)
+        self.display = practiseToolScreen(self, 1)
         self.display.grid(row=0, column = 0, pady=10, padx=10, sticky = "nsew")
         self.update()
     
@@ -328,6 +326,7 @@ class practiseToolScreen(ctk.CTkFrame):
             self.usage = 'Pipette Controller'
 
         self.scene = pyrender.Scene()
+        self.string = "Pipette_1:0/0/0+Aid_1:0/0/00" #Sample
 
         self.grid_columnconfigure(0, weight = 1)
         self.grid_rowconfigure(0, weight = 0)
@@ -348,7 +347,11 @@ class practiseToolScreen(ctk.CTkFrame):
     def updateCameraFrame(self):
         startTime = time.time()
         string = read_hub_serial()
-        data = serial2Dict(string)
+        try:
+            data = serial2Dict(string)
+            self.string = string
+        except:
+            data = serial2Dict(self.string)
         """
         data = {
         "SCPRollF":rollSCP,
@@ -358,6 +361,7 @@ class practiseToolScreen(ctk.CTkFrame):
         "AIDPitchF":pitchAID,
         "AIDButton":buttonAID}
         """
+        print(data)
         if self.no == 0:
             roll = np.radians(float(data['SCPRollF']))
             pitch = np.radians(float(data['SCPPitchF']))
@@ -394,7 +398,7 @@ class practiseToolScreen(ctk.CTkFrame):
         cv.putText(img_bgr, f"{self.usage}", (0, 25), cv.FONT_HERSHEY_DUPLEX,
                    0.5, (0, 0, 0), 1, cv.LINE_AA)
 
-        cv.putText(img_bgr, f"Roll: {round(roll, 2)}, Pitch: {round(pitch, 2)}, Button Pressed: {buttonTEXT}",
+        cv.putText(img_bgr, f"Roll: {round(np.degrees(roll), 2)}, Pitch: {round(np.degrees(pitch), 2)}, Button Pressed: {buttonTEXT}",
                    (0, 50), cv.FONT_HERSHEY_DUPLEX, 0.5, (0, 0, 0), 1, cv.LINE_AA)
 
         framePIL = convertCVtoPIL(img_bgr)
@@ -402,7 +406,7 @@ class practiseToolScreen(ctk.CTkFrame):
         self.cameraFrame.create_image(0, 0, anchor=tk.NW, image=framePIL)
         self.cameraFrame.image = framePIL
         self.scene.remove_node(mesh_node)
-        print(time.time() - startTime)
+        # print(time.time() - startTime)
         self.update()            
         self.after(33, self.updateCameraFrame)  # ~30 FPS
 
