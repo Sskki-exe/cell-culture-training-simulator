@@ -107,6 +107,7 @@ class app(ctk.CTk):
         self.toolSampleRange = None
 
         # Show loading menu
+        # self.displayFeedback('Single Channel Pipettor',"160525 150457")
         self.display = menuFrame(self)
         self.display.grid(row=0, column = 0, pady=10, padx=10, sticky = "nsew")
         self.update()
@@ -126,6 +127,7 @@ class app(ctk.CTk):
     def displayPractiseSanitation(self):
         """Function to record screen for Single Channel Pipette Use
         """
+        self.handDetector = handLandmarker(cameraProperties=self.cameraProperties, handLength=self.handLength)
         self.display = practiseHandScreen(self)
         self.display.grid(row=0, column = 0, pady=10, padx=10, sticky = "nsew")
         self.update()
@@ -281,10 +283,14 @@ class practiseHandScreen(ctk.CTkFrame):
         self.calibrateButton = ctk.CTkButton(self, text = "Calibrate Hands", command = self.setHandLength, fg_color="#EC9006", hover_color="#E27602")
         self.calibrateButton.grid(row = 3, column = 0, pady=10, padx=10, sticky = "nsew")
 
-        self.escapeButton = ctk.CTkButton(self, text = "Return to Main Menu", command = self.master.displayMenu, fg_color="#8B0000", hover_color="#610000")
+        self.escapeButton = ctk.CTkButton(self, text = "Return to Main Menu", command = self.exitFrame, fg_color="#8B0000", hover_color="#610000")
         self.escapeButton.grid(row = 4, column = 0, pady=10, padx=10, sticky = "nsew")
 
         self.updateCameraFrame()
+    
+    def exitFrame(self):
+        self.master.displayMenu()
+        self.destroy()
     
     def updateCameraFrame(self):
         ret, frame = self.master.cap.read()
