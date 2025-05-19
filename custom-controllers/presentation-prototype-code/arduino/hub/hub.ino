@@ -36,5 +36,8 @@ void setup() {
 }
 
 void loop() {
-  server.handleClient();  // Handle incoming HTTP requests
+  if (Serial.available()){
+    Serial.readStringUntil('\n')
+    server.handleClient();// Handle incoming HTTP requests
+  }
 }

@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 10
+names: ['Cell Culture Plate - 24', 'Disposable Pasteur Pipette', 'Pipette Controller', 'Serological Pipet 1 mL', 'Serological Pipet 10 mL', 'Serological Pipet 2 mL', 'Serological Pipet 25 mL', 'Serological Pipet 5 mL', 'Serological Pipet 50 mL', 'Single Channel Pipettor']
+
+roboflow:
+  workspace: fyp-cell-culture
+  project: cell-culture-object-detection-without-sealed-vs-unsealed
+  version: 1
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/fyp-cell-culture/cell-culture-object-detection-without-sealed-vs-unsealed/dataset/1
