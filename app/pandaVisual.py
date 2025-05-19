@@ -7,6 +7,7 @@ from camera import createVideoWriter, getCameraProperties
 from datetime import datetime
 import time
 from panda3d.core import *
+load_prc_file_data("", "window-type none")
 from direct.showbase.ShowBase import ShowBase
 
 MARGIN = 10  # pixels
@@ -38,7 +39,7 @@ def transMatrix(roll,pitch):
     ])  # Rotation using pitch
 
     # Combine roll and pitch rotations
-    R = Rx @ Ry  
+    R = Ry @ Rx  
     T = np.eye(4)
     T[:3, :3] = R
 
@@ -53,9 +54,15 @@ def np2panda(T):
     Returns:
         Mat4 : Panda format for matrix
     """
-    T = T.astype(np.float32)
-    flat = T.flatten()  # row-major by default
-    return Mat4(*flat)
+    T = np.array(T, dtype=np.float32).reshape(4, 4)
+
+    # Convert to row-major (Panda expects row-major)
+    pandaT = LMatrix4f()
+    for i in range(4):
+        for j in range(4):
+            pandaT.set_cell(i, j, T[i, j])
+
+    return Mat4(pandaT)
 
 def trimesh_to_geomnode(mesh):
     """Convert a trimesh mesh to a Panda3D GeomNode    
@@ -66,15 +73,33 @@ def trimesh_to_geomnode(mesh):
     Returns:
         node : GeomNode
     """
+    _ = mesh.vertex_normals  # triggers computation
+    if not hasattr(mesh.visual, 'vertex_colors') or mesh.visual.vertex_colors is None:
+        # Default to white if no colors
+        vertex_colors = np.ones((len(mesh.vertices), 4), dtype=np.float32)
+    else:
+        vertex_colors = mesh.visual.vertex_colors
+        # Normalize if needed (handle uint8 color)
+        if vertex_colors.dtype == np.uint8:
+            vertex_colors = vertex_colors.astype(np.float32) / 255.0
+        if vertex_colors.shape[1] == 3:
+            alpha = np.ones((vertex_colors.shape[0], 1), dtype=np.float32)
+            vertex_colors = np.hstack((vertex_colors, alpha))  # add alpha channel
+
     vertices = mesh.vertices
     faces = mesh.faces
 
-    format = GeomVertexFormat.get_v3()
+    format = GeomVertexFormat.get_v3c4()
     vdata = GeomVertexData('mesh', format, Geom.UH_static)
 
+
     vertex_writer = GeomVertexWriter(vdata, 'vertex')
-    for v in vertices:
-        vertex_writer.add_data3(v[0], v[1], v[2])
+    color_writer = GeomVertexWriter(vdata, 'color')
+
+    for v, c in zip(vertices, vertex_colors):
+        vertex_writer.add_data3(*v)
+        color_writer.add_data4(*c)
+
 
     geom = Geom(vdata)
     triangles = GeomTriangles(Geom.UH_static)
@@ -89,7 +114,8 @@ def trimesh_to_geomnode(mesh):
 
 ################################ CPU Video ############################################ 
 class PandaRenderer(ShowBase):
-    def __init__(self, cameraProperties):
+    def __init__(self, cameraProperties, parent_window_id = None):
+        window_type = 'onscreen' if parent_window_id is not None else 'offscreen'
         # Initialize Panda3D but don't open a window
         ShowBase.__init__(self, windowType='offscreen')
         self.width = int(cameraProperties[0])
@@ -98,6 +124,9 @@ class PandaRenderer(ShowBase):
 
         # Create a temporary visible window to get a GSG
         win_props = WindowProperties.size(self.width, self.height)
+        if parent_window_id is not None:
+            win_props.set_parent_window(parent_window_id)
+
         fb_props = FrameBufferProperties()
         fb_props.set_rgb_color(True)
         fb_props.set_depth_bits(24)
@@ -118,6 +147,10 @@ class PandaRenderer(ShowBase):
             raise RuntimeError("Failed to get GSG from temporary window")
 
         # Now create the actual offscreen buffer
+        buffer_flags = GraphicsPipe.BF_refuse_window | GraphicsPipe.BF_resizeable
+        if parent_window_id is not None:
+            buffer_flags = GraphicsPipe.BF_require_window
+
         self.buffer = self.graphicsEngine.make_output(
             self.pipe, "offscreen buffer", -2,
             fb_props, win_props,
@@ -134,7 +167,7 @@ class PandaRenderer(ShowBase):
         # Create camera for this buffer
         self.cam_node = self.makeCamera(self.buffer)
         lens = PerspectiveLens()
-        lens.set_fov(np.degrees(np.pi / 3.0))
+        lens.set_fov(np.degrees(np.pi / 2.0))
         aspect_ratio = cameraProperties[0] / cameraProperties[1]
         lens.set_aspect_ratio(aspect_ratio)
         self.cam_node.node().set_lens(lens)
@@ -148,36 +181,45 @@ class PandaRenderer(ShowBase):
         dlnp = self.render.attach_new_node(dlight)
         self.render.set_light(dlnp)
 
+        # Ambient light
+        alight = AmbientLight("alight")
+        alight.set_color((0.3, 0.3, 0.3, 1))
+        alnp = self.render.attach_new_node(alight)
+        self.render.set_light(alnp)
+
         # Container for the current mesh node
         self.mesh_node = None
+        self.rotationFix = Mat4.rotate_mat(180, LVector3(0, 1, 0))
 
-    def render_mesh(self, mesh, T):
-        # Remove old mesh if any
+    def render_mesh(self, obj_path, T):
+        # Remove previous model if any
         if self.mesh_node:
             self.mesh_node.remove_node()
+        
+        # Load model with its materials and textures
+        model = loader.load_model(obj_path)
+        model.reparent_to(self.render)
 
-        # Convert trimesh to Panda3D GeomNode
-        geom_node = trimesh_to_geomnode(mesh)
-        self.mesh_node = self.render.attach_new_node(geom_node)
+        # Apply transformation matrix (4x4 NumPy to Panda3D Mat4)
+        TPanda = np2panda(T)  # Panda expects column-major
+        model.set_mat(self.rotationFix*TPanda)
 
-        # Apply transform matrix T (numpy 4x4)
-        mat = np2panda(T)
-        self.mesh_node.set_mat(mat)
+        self.mesh_node = model  # store reference for cleanup next frame
 
-        # Render a frame and grab the image
+        # Render the frame
         self.graphicsEngine.render_frame()
 
-        # tex = self.buffer.get_texture()
-        img = self.tex.get_ram_image_as("RGB")
-        # Convert to numpy array
+        # Read pixel data from the texture buffer
+        tex = self.buffer.get_texture()
+        if tex is None:
+            raise RuntimeError("Failed to retrieve texture from buffer.")
+
+        img = tex.get_ram_image_as("RGB")
         img_np = np.frombuffer(img, dtype=np.uint8)
         img_np = img_np.reshape((self.height, self.width, 3))
-        # Flip Y axis (Panda3D's image is upside-down)
-        img_np = np.flip(img_np, axis=0)
+        img_np = np.flip(img_np, axis=0)  # Flip Y
 
-        # Convert RGB to BGR for OpenCV compatibility
         img_bgr = cv.cvtColor(img_np, cv.COLOR_RGB2BGR)
-
         return img_bgr
 
 def visualizer3dSCPVideoPanda(filename, cameraProperties, dateStr="", test=False):
@@ -195,13 +237,18 @@ def visualizer3dSCPVideoPanda(filename, cameraProperties, dateStr="", test=False
         pitch = row['pitch']
         button = row['button']
 
-        T = transMatrix(roll, pitch)
-
+        T = transMatrix(np.deg2rad(roll),np.deg2rad(pitch))
+        
         # Load the mesh based on button state
         if button == 0:
-            mesh = trimesh.load_mesh("3dassets/pipette_up.obj")
+            mesh = "3dassets/pipette_up.obj"
         elif button == 1:
-            mesh = trimesh.load_mesh("3dassets/pipette_down.obj")
+            mesh = "3dassets/pipette_down.obj"
+        
+        # if button == 0:
+        #     mesh = trimesh.load_mesh("3dassets/pipette_up.obj")
+        # elif button == 1:
+        #     mesh = trimesh.load_mesh("3dassets/pipette_down.obj")
 
         img_bgr = renderer.render_mesh(mesh, T)
 

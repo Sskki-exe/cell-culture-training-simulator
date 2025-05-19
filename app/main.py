@@ -14,11 +14,12 @@ from datetime import datetime
 import os
 from serial_read_sample import read_hub_serial
 import csv
-from visualizer3d import visualizer3dSCPVideo, visualizer3dAIDVideo, transMatrix, scenePyRender
+# from visualizer3d import visualizer3dSCPVideo, visualizer3dAIDVideo, transMatrix, scenePyRender
 import numpy as np
 import pyrender
 import trimesh
 from reportMaker import makeReport
+from pandaVisual import *
 
 def convertCVtoPIL(frame):
     """Function to convert from openCV array to PIL array
@@ -331,9 +332,6 @@ class practiseToolScreen(ctk.CTkFrame):
             self.no = 1
             self.usage = 'Pipette Controller'
 
-        self.scene = pyrender.Scene()
-        self.string = "Pipette_1:0/0/0+Aid_1:0/0/00" #Sample
-
         self.grid_columnconfigure(0, weight = 1)
         self.grid_rowconfigure(0, weight = 0)
         self.grid_rowconfigure(1, weight = 1) 
@@ -347,7 +345,12 @@ class practiseToolScreen(ctk.CTkFrame):
 
         self.escapeButton = ctk.CTkButton(self, text = "Return to Main Menu", command = self.master.displayMenu, fg_color="#8B0000", hover_color="#610000")
         self.escapeButton.grid(row = 2, column = 0, pady=10, padx=10, sticky = "nsew")
+        
+        self.cameraFrame.update()
 
+        self.scene = PandaRenderer(self.master.cameraProperties, parent_window_id=self.cameraFrame.winfo_id())
+        self.string = "Pipette_1:0/0/0+Aid_1:0/0/00" #Sample
+        
         self.updateCameraFrame()
 
     def updateCameraFrame(self):
@@ -367,51 +370,49 @@ class practiseToolScreen(ctk.CTkFrame):
         "AIDPitchF":pitchAID,
         "AIDButton":buttonAID}
         """
-        print(data)
         if self.no == 0:
-            roll = np.radians(float(data['SCPRollF']))
-            pitch = np.radians(float(data['SCPPitchF']))
+            roll = float(data['SCPRollF'])
+            pitch = float(data['SCPPitchF'])
             button = int(data['SCPButton'])
 
             if button == 0:  # button down
-                mesh = trimesh.load_mesh("3dassets/pipette_up.obj")
+                mesh = "3dassets/pipette_up.obj"
                 buttonTEXT = "False"
             elif button == 1:  # button down
-                mesh = trimesh.load_mesh("3dassets/pipette_down.obj")
+                mesh = "3dassets/pipette_down.obj"
                 buttonTEXT = "True"
 
         elif self.no == 1:
-            roll = np.radians(float(data['AIDRollF']))
-            pitch = np.radians(float(data['AIDPitchF']))
+            roll = float(data['AIDRollF'])
+            pitch = float(data['AIDPitchF'])
             button = int(data['AIDButton'])
             if button == 0:  # IDLE
-                mesh = trimesh.load_mesh("3dassets/pipette_up.obj")
+                mesh = "3dassets/pipette_up.obj"
                 buttonTEXT = "Idle"
             elif button == 1:  # SUCK
-                mesh = trimesh.load_mesh("3dassets/pipette_down.obj")
+                mesh = "3dassets/pipette_down.obj"
                 buttonTEXT = "Sucking"
             elif button == 10: # RELEASE
-                mesh = trimesh.load_mesh("3dassets/pipette_up.obj")
+                mesh = "3dassets/pipette_up.obj"
                 buttonTEXT = "Releasing"
             elif button == 11: # IDLE
-                mesh = trimesh.load_mesh("3dassets/pipette_down.obj")
+                mesh = "3dassets/pipette_down.obj"
                 buttonTEXT = "Idle"
 
-        T = transMatrix(roll,pitch)
-        img_bgr, mesh_node = scenePyRender(self.scene,mesh,T, self.master.cameraProperties) # Scene Renderer
+        T = transMatrix(np.deg2rad(roll),np.deg2rad(pitch))
+        img_bgr, mesh_node = self.scene.render_mesh(mesh, T) # Scene Renderer
 
         # Add text to the frame
         cv.putText(img_bgr, f"{self.usage}", (0, 25), cv.FONT_HERSHEY_DUPLEX,
                    0.5, (0, 0, 0), 1, cv.LINE_AA)
 
-        cv.putText(img_bgr, f"Roll: {round(np.degrees(roll), 2)}, Pitch: {round(np.degrees(pitch), 2)}, Button Pressed: {buttonTEXT}",
+        cv.putText(img_bgr, f"Roll: {round(roll, 2)}, Pitch: {round(pitch, 2)}, Button Pressed: {buttonTEXT}",
                    (0, 50), cv.FONT_HERSHEY_DUPLEX, 0.5, (0, 0, 0), 1, cv.LINE_AA)
 
         framePIL = convertCVtoPIL(img_bgr)
 
         self.cameraFrame.create_image(0, 0, anchor=tk.NW, image=framePIL)
         self.cameraFrame.image = framePIL
-        self.scene.remove_node(mesh_node)
         # print(time.time() - startTime)
         self.update()            
         self.after(33, self.updateCameraFrame)  # ~30 FPS
