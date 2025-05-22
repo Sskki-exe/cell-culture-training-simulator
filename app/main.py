@@ -263,7 +263,6 @@ class practiseHandScreen(ctk.CTkFrame):
         super().__init__(master)
         self.master = master
         self.mask = SanitisationMask(self.master.cameraProperties)
-        self.count = 0
         self.result = None
 
         self.grid_columnconfigure(0, weight = 1)
@@ -297,7 +296,7 @@ class practiseHandScreen(ctk.CTkFrame):
     def updateCameraFrame(self):
         ret, frame = self.master.cap.read()
         if ret:
-            self.result = self.master.handDetector.detect(frame, self.count)
+            self.result = self.master.handDetector.detect(frame, int(time.monotonic()*1000))
             annotatedFrame = self.master.handDetector.paintImage(frame, self.result, self.mask)
             framePIL = convertCVtoPIL(annotatedFrame)
             
@@ -305,7 +304,6 @@ class practiseHandScreen(ctk.CTkFrame):
             self.cameraFrame.image = framePIL
             self.update()
             
-        self.count += 1
         self.after(33, self.updateCameraFrame)  # ~30 FPS
     
     def setHandLength(self):
@@ -766,10 +764,9 @@ class feedbackScreen(ctk.CTkFrame):
 
         # Graphics
         self.grid_columnconfigure(0, weight = 1)
-        self.grid_columnconfigure(1, weight = 1)
         self.grid_rowconfigure(0, weight = 0)
         self.grid_rowconfigure(1, weight = 1) 
-        self.grid_rowconfigure(2, weight = 0) 
+        self.grid_rowconfigure(2, weight = 1) 
     
         ### PUT PLACEHOLDER IMAGE WHILST CAMERA IS OFF
         self.placeholder = ctk.CTkImage(light_image=Image.open("loadingGraphics/wait.jpg"),
@@ -777,7 +774,7 @@ class feedbackScreen(ctk.CTkFrame):
                             size=(1280, 720))
         
         self.titleLabel = ctk.CTkLabel(self, text = f"Reviewing", font = ("Segoe UI", 80, "bold"))
-        self.titleLabel.grid(row = 0, column = 0, columnspan = 2, pady=10, padx=10, sticky = "nsew")
+        self.titleLabel.grid(row = 0, column = 0, pady=10, padx=10, sticky = "nsew")
 
         self.cameraFrame = tk.Canvas(self, width = self.master.cameraProperties[0]*3, height = self.master.cameraProperties[1], highlightthickness=1)
         self.cameraFrame.grid(row = 1, column = 0, pady = 10, padx = 10)
@@ -789,15 +786,18 @@ class feedbackScreen(ctk.CTkFrame):
         self.cameraFrame.image = tempFrame
 
         self.playButton = ctk.CTkButton(self, text = "Process video", command = self.processVideo)
-        self.playButton.grid(row = 2, columnspan = 2, column = 0, pady=10, padx=10, sticky = "nsew")
+        self.playButton.grid(row = 3, column = 0, pady=10, padx=10, sticky = "nsew")
        
         # Statistics frame
         self.statistics = ctk.CTkFrame(self)
-        self.statistics.grid(row = 1, column = 1, pady=10, padx=10, sticky = "nsew")
+        self.statistics.grid(row = 2, column = 0, pady=10, padx=10)
         self.statistics.pack_propagate(False)
         
-        self.details = ctk.CTkLabel(self.statistics, text="", wraplength=self.master.cameraProperties[0]-50, justify="left")
+        self.details = ctk.CTkTextbox(self.statistics, width=self.master.cameraProperties[0]*2-50, height = cameraProperties[1]-100)
         self.details.grid(row=0,column=0, pady = 10, padx = 10, sticky = "nsew")
+
+        self.statistics.grid_columnconfigure(0, weight = 1)
+        self.statistics.grid_rowconfigure(0, weight = 1)
 
         self.update()
 
@@ -805,7 +805,6 @@ class feedbackScreen(ctk.CTkFrame):
         """Function to process all the videos made.
         """
         processedVideoList = ["","","","",""]
-        self.count = 0
         textFile = open(f"video/{self.dateStr}/final/note.txt", "a")
 
         def sanitiseCheck(videoName: str, index: int):
@@ -818,9 +817,8 @@ class feedbackScreen(ctk.CTkFrame):
                 ret, frame = footage.read()
 
                 if ret == True:
-                    result = self.master.handDetector.detect(frame, self.count)
+                    result = self.master.handDetector.detect(frame, int(time.monotonic()*1000))
                     resultList.append(result)
-                    self.count += 1
 
                 elif ret == False:
                     break
@@ -943,13 +941,11 @@ class feedbackScreen(ctk.CTkFrame):
                 ret, frame = footage.read()
 
                 if ret == True:
-                    resultHand = self.master.handDetector.detect(frame, self.count)
+                    resultHand = self.master.handDetector.detect(frame, int(time.monotonic()*1000))
                     handResultList.append(resultHand)
 
-                    resultObject = self.master.objectDetector.detect(frame, self.count)
+                    resultObject = self.master.objectDetector.detect(frame, int(time.monotonic()*1000))
                     objectResultList.append(resultObject)
-
-                    self.count += 1
 
                 elif ret == False:
                     break
@@ -1067,8 +1063,8 @@ class feedbackScreen(ctk.CTkFrame):
         sanitiseCheck(self.master.videoName[4], 4)
         print("Finished processing sanitisation")
 
-        SCPVideoName = visualizer3dSCPVideo(self.master.toolData, self.master.cameraProperties, self.dateStr)
-        AIDVideoName = visualizer3dAIDVideo(self.master.toolData, self.master.cameraProperties, self.dateStr)
+        SCPVideoName = visualizer3dSCPVideoPanda(self.master.toolData, self.master.cameraProperties, self.master.digitalTwin, self.dateStr)
+        AIDVideoName = visualizer3dAIDVideoPanda(self.master.toolData, self.master.cameraProperties, self.master.digitalTwin, self.dateStr)
         print("Finished processing tool use")
 
         print("Finished all processing")
@@ -1135,7 +1131,8 @@ class feedbackScreen(ctk.CTkFrame):
             note = notes.readline()
             splitNote = note.replace('\t','\n\n')
             noteAll = noteAll +'\n' + splitNote
-            self.details.configure(text = noteAll.strip())
+            self.details.delete("0.0","end")
+            self.details.insert("0.0", text = noteAll.strip())
             self.update()
         
         SCPFootage.release()

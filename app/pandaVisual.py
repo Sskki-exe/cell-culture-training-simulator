@@ -149,10 +149,9 @@ class PandaRenderer(ShowBase):
 
         return img_bgr
 
-def visualizer3dSCPVideoPanda(filename, cameraProperties, dateStr="", test=False):
+def visualizer3dSCPVideoPanda(filename, cameraProperties, renderer, dateStr="", test=False):
     dataCSV = pd.read_csv(filename, header = None)
     dataCSV.columns = ['roll', 'pitch', 'button', 'a', 'b', 'c']
-    renderer = PandaRenderer(cameraProperties)
     
     if test:
         videoWriter, videoName = createVideoWriter("vistest/model", cameraProperties)
@@ -189,6 +188,53 @@ def visualizer3dSCPVideoPanda(filename, cameraProperties, dateStr="", test=False
 
     videoWriter.release()
     return videoName
+
+def visualizer3dAIDVideoPanda(filename, cameraProperties, renderer, dateStr="", test=False):
+    dataCSV = pd.read_csv(filename, header = None)
+    dataCSV.columns = ['roll', 'pitch', 'button', 'a', 'b', 'c']
+    # renderer = PandaRenderer(cameraProperties)
+    
+    if test:
+        videoWriter, videoName = createVideoWriter("vistest/model", cameraProperties)
+    else:
+        videoWriter, videoName = createVideoWriter(f"{dateStr}/process/model", cameraProperties)
+
+    for _, row in dataCSV.iterrows():
+        roll = row['roll']
+        pitch = row['pitch']
+        button = row['button']
+
+        T = transMatrix(np.deg2rad(roll),np.deg2rad(pitch))
+        # Load the mesh based on button state        
+        if button == 0: # no button
+            displayObject = "3dassets/pipette_up.obj"
+            buttonTEXT = "Idle"
+
+        elif button == 1: # suck button
+            displayObject = "3dassets/pipette_down.obj"
+            buttonTEXT = "Suck"
+        
+        elif button == 10: # release button
+            displayObject = "3dassets/pipette_up.obj"
+            buttonTEXT = "Release"
+
+        elif button == 11: # borken
+            displayObject = "3dassets/pipette_down.obj"
+            buttonTEXT = "Idle"
+
+        img_bgr = renderer.render_mesh(displayObject, T)
+
+        cv.putText(img_bgr, f"Single Channel Pipette", (0, 25), cv.FONT_HERSHEY_DUPLEX,
+                   0.5, (0, 0, 0), 1, cv.LINE_AA)
+
+        cv.putText(img_bgr, f"Roll: {round(row['roll'], 2)}, Pitch: {round(row['pitch'], 2)}, Button Pressed: {bool(row['button'])}",
+                   (0, 50), cv.FONT_HERSHEY_DUPLEX, 0.5, (0, 0, 0), 1, cv.LINE_AA)
+
+        videoWriter.write(img_bgr)
+
+    videoWriter.release()
+    return videoName
+
 ################################ CSV Test File Generators ############################################ 
 def generate_random_transform_csv(num_samples):
     """Used to generate random csv to test above code.
@@ -311,9 +357,9 @@ if __name__=="__main__":
     # Test visualisation
     # randomTestFile = generate_random_transform_csv(150)
     randomTestFile = generate_sweep_csv()
-    
+    renderer = PandaRenderer(ca)
     pyrendertime = time.time()
-    animatedVideo = visualizer3dSCPVideoPanda(randomTestFile, cameraProperties, test = True)
+    animatedVideo = visualizer3dSCPVideoPanda(randomTestFile, cameraProperties, renderer, test = True)
     pyrendertime = time.time() - pyrendertime
     print(pyrendertime)
 
