@@ -83,7 +83,7 @@ class app(ctk.CTk):
         self.update()
 
         # Camera Initialisation
-        self.cap = cv.VideoCapture(1)
+        self.cap = cv.VideoCapture(0)
         if not self.cap.isOpened:
             print("Camera brokey")
             self.destroy()
@@ -101,6 +101,7 @@ class app(ctk.CTk):
         self.objectDetector = ObjectDetectorYOLO()
         self.function = 0
         self.handLength = 20
+        self.digitalTwin = PandaRenderer(self.cameraProperties)
 
         # Results interpreted from most recent recording
         self.videoName = [] 
@@ -343,12 +344,12 @@ class practiseToolScreen(ctk.CTkFrame):
         self.cameraFrame = tk.Canvas(self, width = self.master.cameraProperties[0], height = self.master.cameraProperties[1], highlightthickness=1)
         self.cameraFrame.grid(row = 1, column = 0, pady = 10, padx = 10)
 
-        self.escapeButton = ctk.CTkButton(self, text = "Return to Main Menu", command = self.master.displayMenu, fg_color="#8B0000", hover_color="#610000")
+        self.escapeButton = ctk.CTkButton(self, text = "Return to Main Menu", command = self.close, fg_color="#8B0000", hover_color="#610000")
         self.escapeButton.grid(row = 2, column = 0, pady=10, padx=10, sticky = "nsew")
         
         self.cameraFrame.update()
 
-        self.scene = PandaRenderer(self.master.cameraProperties, parent_window_id=self.cameraFrame.winfo_id())
+        self.scene = self.master.digitalTwin
         self.string = "Pipette_1:0/0/0+Aid_1:0/0/00" #Sample
         
         self.updateCameraFrame()
@@ -400,7 +401,7 @@ class practiseToolScreen(ctk.CTkFrame):
                 buttonTEXT = "Idle"
 
         T = transMatrix(np.deg2rad(roll),np.deg2rad(pitch))
-        img_bgr, mesh_node = self.scene.render_mesh(mesh, T) # Scene Renderer
+        img_bgr = self.scene.render_mesh(mesh, T) # Scene Renderer
 
         # Add text to the frame
         cv.putText(img_bgr, f"{self.usage}", (0, 25), cv.FONT_HERSHEY_DUPLEX,
@@ -409,13 +410,17 @@ class practiseToolScreen(ctk.CTkFrame):
         cv.putText(img_bgr, f"Roll: {round(roll, 2)}, Pitch: {round(pitch, 2)}, Button Pressed: {buttonTEXT}",
                    (0, 50), cv.FONT_HERSHEY_DUPLEX, 0.5, (0, 0, 0), 1, cv.LINE_AA)
 
-        framePIL = convertCVtoPIL(img_bgr)
+        imgPIL = convertCVtoPIL(img_bgr)
 
-        self.cameraFrame.create_image(0, 0, anchor=tk.NW, image=framePIL)
-        self.cameraFrame.image = framePIL
+        self.cameraFrame.create_image(0, 0, anchor=tk.NW, image=imgPIL)
+        self.cameraFrame.image = imgPIL
         # print(time.time() - startTime)
         self.update()            
         self.after(33, self.updateCameraFrame)  # ~30 FPS
+    
+    def close(self):
+        self.master.displayMenu()
+        self.destroy()
 
 class settingsScreen(ctk.CTkFrame):
     """Frame used to change settings in the app

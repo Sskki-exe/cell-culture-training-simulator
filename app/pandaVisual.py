@@ -7,7 +7,8 @@ from camera import createVideoWriter, getCameraProperties
 from datetime import datetime
 import time
 from panda3d.core import *
-load_prc_file_data("", "window-type none")
+loadPrcFileData("", """window-type offscreen\n""")
+loadPrcFileData('', 'load-display p3tinydisplay')
 from direct.showbase.ShowBase import ShowBase
 
 MARGIN = 10  # pixels
@@ -64,116 +65,49 @@ def np2panda(T):
 
     return Mat4(pandaT)
 
-def trimesh_to_geomnode(mesh):
-    """Convert a trimesh mesh to a Panda3D GeomNode    
-    
-    Args:
-        mesh (trimesh): Mesh
-
-    Returns:
-        node : GeomNode
-    """
-    _ = mesh.vertex_normals  # triggers computation
-    if not hasattr(mesh.visual, 'vertex_colors') or mesh.visual.vertex_colors is None:
-        # Default to white if no colors
-        vertex_colors = np.ones((len(mesh.vertices), 4), dtype=np.float32)
-    else:
-        vertex_colors = mesh.visual.vertex_colors
-        # Normalize if needed (handle uint8 color)
-        if vertex_colors.dtype == np.uint8:
-            vertex_colors = vertex_colors.astype(np.float32) / 255.0
-        if vertex_colors.shape[1] == 3:
-            alpha = np.ones((vertex_colors.shape[0], 1), dtype=np.float32)
-            vertex_colors = np.hstack((vertex_colors, alpha))  # add alpha channel
-
-    vertices = mesh.vertices
-    faces = mesh.faces
-
-    format = GeomVertexFormat.get_v3c4()
-    vdata = GeomVertexData('mesh', format, Geom.UH_static)
-
-
-    vertex_writer = GeomVertexWriter(vdata, 'vertex')
-    color_writer = GeomVertexWriter(vdata, 'color')
-
-    for v, c in zip(vertices, vertex_colors):
-        vertex_writer.add_data3(*v)
-        color_writer.add_data4(*c)
-
-
-    geom = Geom(vdata)
-    triangles = GeomTriangles(Geom.UH_static)
-    for face in faces:
-        triangles.add_vertices(int(face[0]), int(face[1]), int(face[2]))
-    geom.add_primitive(triangles)
-
-    node = GeomNode('gnode')
-    node.add_geom(geom)
-
-    return node
-
 ################################ CPU Video ############################################ 
 class PandaRenderer(ShowBase):
-    def __init__(self, cameraProperties, parent_window_id = None):
-        window_type = 'onscreen' if parent_window_id is not None else 'offscreen'
-        # Initialize Panda3D but don't open a window
+    def __init__(self, cameraProperties):
+        # Initialize ShowBase without opening a visible window
         ShowBase.__init__(self, windowType='offscreen')
-        self.width = int(cameraProperties[0])
-        self.height = int(cameraProperties[1])
-        self.win.set_clear_color((1, 1, 1, 1))
-
-        # Create a temporary visible window to get a GSG
-        win_props = WindowProperties.size(self.width, self.height)
-        if parent_window_id is not None:
-            win_props.set_parent_window(parent_window_id)
-
+        
+        self.width, self.height = int(cameraProperties[0]), int(cameraProperties[1])
+        
         fb_props = FrameBufferProperties()
         fb_props.set_rgb_color(True)
-        fb_props.set_depth_bits(24)
         fb_props.set_alpha_bits(8)
+        fb_props.set_depth_bits(24)
+        
+        win_props = WindowProperties.size(self.width, self.height)
 
-        temp_win = self.graphicsEngine.make_output(
-            self.pipe, "temp window", -1,
-            fb_props, win_props,
-            GraphicsPipe.BF_require_window,
-            None, None
-        )
 
-        if temp_win is None:
-            raise RuntimeError("Failed to create temporary window")
-
-        gsg = temp_win.get_gsg()
-        if gsg is None:
-            raise RuntimeError("Failed to get GSG from temporary window")
-
-        # Now create the actual offscreen buffer
-        buffer_flags = GraphicsPipe.BF_refuse_window | GraphicsPipe.BF_resizeable
-        if parent_window_id is not None:
-            buffer_flags = GraphicsPipe.BF_require_window
-
+        # Create offscreen buffer directly, no temporary window needed
         self.buffer = self.graphicsEngine.make_output(
             self.pipe, "offscreen buffer", -2,
             fb_props, win_props,
-            GraphicsPipe.BF_refuse_window | GraphicsPipe.BF_resizeable,
-            gsg, temp_win
+            GraphicsPipe.BF_refuse_window,
+            None,  # Use default GSG
+            None
         )
-
+        
         if self.buffer is None:
             raise RuntimeError("Failed to create offscreen buffer")
         
+        # Create texture and attach to buffer
         self.tex = Texture()
         self.buffer.add_render_texture(self.tex, GraphicsOutput.RTMCopyRam)
         
-        # Create camera for this buffer
+        # Create camera
         self.cam_node = self.makeCamera(self.buffer)
         lens = PerspectiveLens()
-        lens.set_fov(np.degrees(np.pi / 2.0))
-        aspect_ratio = cameraProperties[0] / cameraProperties[1]
-        lens.set_aspect_ratio(aspect_ratio)
+        lens.set_fov(90)
+        lens.set_aspect_ratio(self.width / self.height)
         self.cam_node.node().set_lens(lens)
-        self.cam_node.set_pos(0, -30, 0)  # camera further back on Y axis
+        
+        # Position camera so it can see your model
+        self.cam_node.set_pos(0, -30, 0)
         self.cam_node.look_at(0, 0, 0)
-
+        
         # Set up light
         dlight = DirectionalLight("dlight")
         dlight.set_color((1, 1, 1, 1))
@@ -186,40 +120,33 @@ class PandaRenderer(ShowBase):
         alight.set_color((0.3, 0.3, 0.3, 1))
         alnp = self.render.attach_new_node(alight)
         self.render.set_light(alnp)
-
-        # Container for the current mesh node
+                
         self.mesh_node = None
         self.rotationFix = Mat4.rotate_mat(180, LVector3(0, 1, 0))
-
-    def render_mesh(self, obj_path, T):
-        # Remove previous model if any
+    
+    def render_mesh(self, mesh_path, T):
+        # Load mesh, apply transform, render, and return numpy array
         if self.mesh_node:
             self.mesh_node.remove_node()
         
-        # Load model with its materials and textures
-        model = loader.load_model(obj_path)
+        model = self.loader.load_model(mesh_path)
         model.reparent_to(self.render)
-
-        # Apply transformation matrix (4x4 NumPy to Panda3D Mat4)
-        TPanda = np2panda(T)  # Panda expects column-major
+        
+        TPanda = np2panda(T)  # Convert numpy matrix to Panda Mat4
         model.set_mat(self.rotationFix*TPanda)
-
-        self.mesh_node = model  # store reference for cleanup next frame
-
-        # Render the frame
+        
+        self.mesh_node = model
+        
         self.graphicsEngine.render_frame()
-
-        # Read pixel data from the texture buffer
-        tex = self.buffer.get_texture()
-        if tex is None:
-            raise RuntimeError("Failed to retrieve texture from buffer.")
-
-        img = tex.get_ram_image_as("RGB")
-        img_np = np.frombuffer(img, dtype=np.uint8)
+        
+        # Get image data from texture
+        img = self.tex.get_ram_image_as("RGB")
+        # Convert to numpy array (bytes -> numpy)
+        img_np = np.frombuffer(img.get_data(), dtype=np.uint8)
         img_np = img_np.reshape((self.height, self.width, 3))
-        img_np = np.flip(img_np, axis=0)  # Flip Y
-
+        img_np = np.flipud(img_np)  # Flip vertical to match usual image coords
         img_bgr = cv.cvtColor(img_np, cv.COLOR_RGB2BGR)
+
         return img_bgr
 
 def visualizer3dSCPVideoPanda(filename, cameraProperties, dateStr="", test=False):
@@ -396,6 +323,8 @@ if __name__=="__main__":
 
     # print(pyrendertime,o3drendertime)
 
-
+    # pipes = GraphicsPipeSelection.get_global_ptr()
+    # for i in range(pipes.get_num_pipe_types()):
+    #     print(pipes.get_pipe_type(i).get_name())
 
 
