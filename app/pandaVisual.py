@@ -39,8 +39,20 @@ def transMatrix(roll,pitch):
         [-np.sin(pitch), 0, np.cos(pitch)]
     ])  # Rotation using pitch
 
+    # flip1 =  np.array([
+    #     [1, 0, 0],
+    #     [0, 0, 1],
+    #     [0, -1, 0]
+    # ]) 
+
+    flip1 =  1.8 * np.array([
+        [1, 0, 0],
+        [0, 1, 0],
+        [0, 0, -1]
+    ]) 
+
     # Combine roll and pitch rotations
-    R = Ry @ Rx  
+    R = flip1 @ Ry @ Rx 
     T = np.eye(4)
     T[:3, :3] = R
 
@@ -106,7 +118,7 @@ class PandaRenderer(ShowBase):
         
         # Position camera so it can see your model
         self.cam_node.set_pos(0, -30, 0)
-        self.cam_node.look_at(0, 0, 0)
+        self.cam_node.look_at(0, 0, 20)
         
         # Set up light
         dlight = DirectionalLight("dlight")
@@ -131,6 +143,10 @@ class PandaRenderer(ShowBase):
         
         model = self.loader.load_model(mesh_path)
         model.reparent_to(self.render)
+
+        # axis = self.loader.load_model("models/zup-axis")  # built-in axis model
+        # axis.set_scale(5)  # scale as needed
+        # axis.reparent_to(self.render)
         
         TPanda = np2panda(T)  # Convert numpy matrix to Panda Mat4
         model.set_mat(self.rotationFix*TPanda)
@@ -207,27 +223,27 @@ def visualizer3dAIDVideoPanda(filename, cameraProperties, renderer, dateStr="", 
         T = transMatrix(np.deg2rad(roll),np.deg2rad(pitch))
         # Load the mesh based on button state        
         if button == 0: # no button
-            displayObject = "3dassets/pipette_up.obj"
+            displayObject = "3dassets/pipette_default.obj"
             buttonTEXT = "Idle"
 
         elif button == 1: # suck button
-            displayObject = "3dassets/pipette_down.obj"
-            buttonTEXT = "Suck"
+            displayObject = "3dassets/pipette_aspirate.obj"
+            buttonTEXT = "Aspirate"
         
         elif button == 10: # release button
-            displayObject = "3dassets/pipette_up.obj"
-            buttonTEXT = "Release"
+            displayObject = "3dassets/pipette_dispense.obj"
+            buttonTEXT = "Dispense"
 
         elif button == 11: # borken
-            displayObject = "3dassets/pipette_down.obj"
+            displayObject = "3dassets/pipette_abuse.obj"
             buttonTEXT = "Idle"
 
         img_bgr = renderer.render_mesh(displayObject, T)
 
-        cv.putText(img_bgr, f"Single Channel Pipette", (0, 25), cv.FONT_HERSHEY_DUPLEX,
+        cv.putText(img_bgr, f"Pipette Aid", (0, 25), cv.FONT_HERSHEY_DUPLEX,
                    0.5, (0, 0, 0), 1, cv.LINE_AA)
 
-        cv.putText(img_bgr, f"Roll: {round(row['roll'], 2)}, Pitch: {round(row['pitch'], 2)}, Button Pressed: {bool(row['button'])}",
+        cv.putText(img_bgr, f"Roll: {round(row['roll'], 2)}, Pitch: {round(row['pitch'], 2)}, Button Pressed: {buttonTEXT}",
                    (0, 50), cv.FONT_HERSHEY_DUPLEX, 0.5, (0, 0, 0), 1, cv.LINE_AA)
 
         videoWriter.write(img_bgr)

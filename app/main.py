@@ -35,7 +35,16 @@ def convertCVtoPIL(frame):
     RGBframe = ImageTk.PhotoImage(image=RGBframe)
     return RGBframe
 
-def serial2Dict(serialString: str):
+rollOffset, pitchOffset = 0, 0 
+for _ in range(100):
+    _ = read_hub_serial()
+string = read_hub_serial()
+SCP, AID = string.split("+")
+label, data = SCP.split(":")
+rollOffset, pitchOffset, _ = data.split("/")
+rollOffset, pitchOffset = float(rollOffset), float(pitchOffset)
+
+def serial2Dict(serialString: str,):
     """Function to convert from the string outputted from the Arduino into a dictionary for CSV saving.
 
     Args:
@@ -50,13 +59,14 @@ def serial2Dict(serialString: str):
     label, data = AID.split(":")
     rollAID, pitchAID, buttonAID = data.split("/")
     row = {
-        "SCPRollF":rollSCP,
-        "SCPPitchF":pitchSCP,
+        "SCPRollF":str(float(rollSCP)+rollOffset),
+        "SCPPitchF":str(float(pitchSCP)-pitchOffset),
         "SCPButton":buttonSCP,
         "AIDRollF":rollAID,
         "AIDPitchF":pitchAID,
         "AIDButton":buttonAID
     }
+    print(row)
     return row
 
 class app(ctk.CTk):
@@ -376,26 +386,32 @@ class practiseToolScreen(ctk.CTkFrame):
 
             if button == 0:  # button down
                 mesh = "3dassets/pipette_up.obj"
-                buttonTEXT = "False"
+                buttonTEXT = "False"    
             elif button == 1:  # button down
                 mesh = "3dassets/pipette_down.obj"
                 buttonTEXT = "True"
 
         elif self.no == 1:
-            roll = float(data['AIDRollF'])
-            pitch = float(data['AIDPitchF'])
-            button = int(data['AIDButton'])
-            if button == 0:  # IDLE
-                mesh = "3dassets/pipette_up.obj"
+            # roll = float(data['AIDRollF'])
+            # pitch = float(data['AIDPitchF'])
+            # button = int(data['AIDButton'])
+            roll = float(data['SCPRollF'])
+            pitch = float(data['SCPPitchF'])
+            button = int(data['SCPButton'])
+            if button == 0: # no button
+                mesh = "3dassets/pipette_default.obj"
                 buttonTEXT = "Idle"
-            elif button == 1:  # SUCK
-                mesh = "3dassets/pipette_down.obj"
-                buttonTEXT = "Sucking"
-            elif button == 10: # RELEASE
-                mesh = "3dassets/pipette_up.obj"
-                buttonTEXT = "Releasing"
-            elif button == 11: # IDLE
-                mesh = "3dassets/pipette_down.obj"
+
+            elif button == 1: # suck button
+                mesh = "3dassets/pipette_aspirate.obj"
+                buttonTEXT = "Aspirate"
+            
+            elif button == 10: # release button
+                mesh = "3dassets/pipette_dispense.obj"
+                buttonTEXT = "Dispense"
+
+            elif button == 11: # borken
+                mesh = "3dassets/pipette_abuse.obj"
                 buttonTEXT = "Idle"
 
         T = transMatrix(np.deg2rad(roll),np.deg2rad(pitch))
@@ -1091,49 +1107,66 @@ class feedbackScreen(ctk.CTkFrame):
         videoWriter, videoName = camera.createVideoWriter(f"{self.dateStr}/final/final", cameraProperties)
 
         print(f"Now replaying footage {videoName}")
-        SCPFootage = cv.VideoCapture(self.master.toolData[0])
-        if not SCPFootage.isOpened():
-            print("pain")
+        # SCPFootage = cv.VideoCapture(self.master.toolData[0])
+        # if not SCPFootage.isOpened():
+        #     print("pain")
 
-        AIDFootage = cv.VideoCapture(self.master.toolData[1])
-        if not AIDFootage.isOpened():
-            print("pain")
+        # AIDFootage = cv.VideoCapture(self.master.toolData[1])
+        # if not AIDFootage.isOpened():
+        #     print("pain")
 
         notes = open(f"video/{self.dateStr}/final/note.txt", "r")
         noteAll = ""
 
-        for video in self.master.videoName:
-            camFootage = cv.VideoCapture(video)
-            if not camFootage.isOpened():
-                 print("pain")
-            else:
-                print(f"Playing {video}")
+        # for video in self.master.videoName:
+        #     camFootage = cv.VideoCapture(video)
+        #     if not camFootage.isOpened():
+        #          print("pain")
+        #     else:
+        #         print(f"Playing {video}")
 
-                while True:
-                    retCam, frameCam = camFootage.read()
-                    retSCP, frameSCP = SCPFootage.read()
-                    retAID, frameAID = AIDFootage.read()
+        #         while True:
+        #             retCam, frameCam = camFootage.read()
+        #             retSCP, frameSCP = SCPFootage.read()
+        #             retAID, frameAID = AIDFootage.read()
+        #             # frameCam = np.ones_like(frameAID)*255
+        #             retCam = True
+        #             if retCam and retSCP and retAID:
+        #                 frame = np.hstack((frameSCP,frameCam,frameAID))
+        #                 videoWriter.write(frame)
 
-                    if retCam and retSCP and retAID:
-                        frame = np.hstack((frameSCP,frameCam,frameAID))
-                        videoWriter.write(frame)
-
-                        framePIL = convertCVtoPIL(frame)
+        #                 framePIL = convertCVtoPIL(frame)
                         
-                        self.cameraFrame.create_image(0, 0, anchor=tk.NW, image=framePIL)
-                        self.cameraFrame.image = framePIL
+        #                 self.cameraFrame.create_image(0, 0, anchor=tk.NW, image=framePIL)
+        #                 self.cameraFrame.image = framePIL
 
-                        self.update()
+        #                 self.update()
 
-                    if retCam == False or cv.waitKey(1) == ord('q'):
-                        break    
-            camFootage.release()
-            note = notes.readline()
-            splitNote = note.replace('\t','\n\n')
-            noteAll = noteAll +'\n' + splitNote
-            self.details.delete("0.0","end")
-            self.details.insert("0.0", text = noteAll.strip())
-            self.update()
+        #             if retCam == False or cv.waitKey(1) == ord('q'):
+        #                 break    
+        #     camFootage.release()
+        #     note = notes.readline()
+        #     splitNote = note.replace('\t','\n\n')
+        #     noteAll = noteAll +'\n' + splitNote
+        #     self.details.delete("0.0","end")
+        #     self.details.insert("0.0", text = noteAll.strip())
+        #     self.update()
+
+        AIDFootage = cv.VideoCapture("video/230525 165656/process/model-230525 165709.avi")
+        camFootage = cv.VideoCapture("video/230525 165132/raw/sanitise-160525 150630.avi")
+        SCPFootage = cv.VideoCapture("video/230525 165656/process/model-230525 165710.avi")
+        retCam, frameCam = camFootage.read()
+        retSCP, frameSCP = SCPFootage.read()
+        retAID, frameAID = AIDFootage.read()
+        frame = np.hstack((frameSCP,frameCam,frameAID))
+        videoWriter.write(frame)
+
+        framePIL = convertCVtoPIL(frame)
+        
+        self.cameraFrame.create_image(0, 0, anchor=tk.NW, image=framePIL)
+        self.cameraFrame.image = framePIL
+
+        self.update()
         
         SCPFootage.release()
         AIDFootage.release()
@@ -1148,6 +1181,9 @@ class feedbackScreen(ctk.CTkFrame):
         self.destroy
 
 if __name__ == "__main__":
+    # label, data = AID.split(":")
+    # rollAID, pitchAID, buttonAID = data.split("/")
+
     displayApp = app()
     cameraProperties = displayApp.cameraProperties
 
