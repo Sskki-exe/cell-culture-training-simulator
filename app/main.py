@@ -213,6 +213,7 @@ class loadingFrame(ctk.CTkFrame):
         super().__init__(master, width = 2000, height = 2000)
 
         # Open poster image once and calculate ratio
+        loadingImageStr = "loadingGraphics\wait.jpg"
         with Image.open(loadingImageStr) as loadingImage:
             loadingImage = ctk.CTkImage(
                 light_image=loadingImage.copy(),
@@ -331,6 +332,8 @@ class practiseToolScreen(ctk.CTkFrame):
         super().__init__(master)
         self.master = master
         self.usage = usage
+        self.speed = 0
+        self.prevResultHand = None
         
         if usage == 0:
             self.no = 0
@@ -344,12 +347,12 @@ class practiseToolScreen(ctk.CTkFrame):
         self.grid_columnconfigure(0, weight = 1)
         self.grid_rowconfigure(0, weight = 0)
         self.grid_rowconfigure(1, weight = 1) 
-        self.grid_rowconfigure(2, weight = 0)
+        self.grid_rowconfigure(3, weight = 0)
 
         self.titleLabel = ctk.CTkLabel(self, text = f"Practise {self.usage}", font = ("Segoe UI", 80, "bold"))
         self.titleLabel.grid(row = 0, column = 0, pady=10, padx=10, sticky = "nsew")
 
-        self.cameraFrame = tk.Canvas(self, width = self.master.cameraProperties[0], height = self.master.cameraProperties[1], highlightthickness=1)
+        self.cameraFrame = tk.Canvas(self, width = self.master.cameraProperties[0]*2, height = self.master.cameraProperties[1], highlightthickness=1)
         self.cameraFrame.grid(row = 1, column = 0, pady = 10, padx = 10)
 
         self.escapeButton = ctk.CTkButton(self, text = "Return to Main Menu", command = self.close, fg_color="#8B0000", hover_color="#610000")
@@ -365,6 +368,9 @@ class practiseToolScreen(ctk.CTkFrame):
     def updateCameraFrame(self):
         startTime = time.time()
         string = read_hub_serial()
+        ret, frame = self.master.cap.read()
+
+
         try:
             data = serial2Dict(string)
             self.string = string
@@ -424,11 +430,22 @@ class practiseToolScreen(ctk.CTkFrame):
         cv.putText(img_bgr, f"Roll: {round(roll, 2)}, Pitch: {round(pitch, 2)}, Button Pressed: {buttonTEXT}",
                    (0, 50), cv.FONT_HERSHEY_DUPLEX, 0.5, (0, 0, 0), 1, cv.LINE_AA)
 
+        resultHand = self.master.handDetector.detect(frame, int(time.monotonic()*1000))
+
+        if self.prevResultHand: # Get the speed of the hands
+           self.speed = self.master.handDetector.getHandSpeed(self.prevResultHand.result, resultHand.result)
+        
+        cv.putText(frame, f"Hand Speed: {round(self.speed,2)} m/s", (0, 25), cv.FONT_HERSHEY_DUPLEX,
+                   0.5, (0, 0, 0), 1, cv.LINE_AA)
+
+        img_bgr = np.hstack((img_bgr,frame))
+
         imgPIL = convertCVtoPIL(img_bgr)
 
         self.cameraFrame.create_image(0, 0, anchor=tk.NW, image=imgPIL)
         self.cameraFrame.image = imgPIL
         # print(time.time() - startTime)
+        self.prevResultHand = resultHand
         self.update()            
         self.after(33, self.updateCameraFrame)  # ~30 FPS
     
