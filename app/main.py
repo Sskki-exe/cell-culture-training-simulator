@@ -431,6 +431,7 @@ class practiseToolScreen(ctk.CTkFrame):
                    (0, 50), cv.FONT_HERSHEY_DUPLEX, 0.5, (0, 0, 0), 1, cv.LINE_AA)
 
         resultHand = self.master.handDetector.detect(frame, int(time.monotonic()*1000))
+        frame = self.master.handDetector.draw_landmarks_on_image(frame, resultHand)
 
         if self.prevResultHand: # Get the speed of the hands
            self.speed = self.master.handDetector.getHandSpeed(self.prevResultHand.result, resultHand.result)
