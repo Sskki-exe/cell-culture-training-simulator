@@ -62,8 +62,8 @@ def serial2Dict(serialString: str,):
         "SCPRollF":str(float(rollSCP)+rollOffset),
         "SCPPitchF":str(float(pitchSCP)-pitchOffset),
         "SCPButton":buttonSCP,
-        "AIDRollF":rollAID,
-        "AIDPitchF":pitchAID,
+        "AIDRollF":str(float(rollAID)+rollOffset),
+        "AIDPitchF":str(float(pitchAID)-pitchOffset),
         "AIDButton":buttonAID
     }
     print(row)
@@ -93,7 +93,7 @@ class app(ctk.CTk):
         self.update()
 
         # Camera Initialisation
-        self.cap = cv.VideoCapture(0)
+        self.cap = cv.VideoCapture(1)
         if not self.cap.isOpened:
             print("Camera brokey")
             self.destroy()
@@ -419,7 +419,7 @@ class practiseToolScreen(ctk.CTkFrame):
             elif button == 11: # borken
                 mesh = "3dassets/pipette_abuse.obj"
                 buttonTEXT = "Idle"
-
+        
         T = transMatrix(np.deg2rad(roll),np.deg2rad(pitch))
         img_bgr = self.scene.render_mesh(mesh, T) # Scene Renderer
 
@@ -431,12 +431,12 @@ class practiseToolScreen(ctk.CTkFrame):
                    (0, 50), cv.FONT_HERSHEY_DUPLEX, 0.5, (0, 0, 0), 1, cv.LINE_AA)
 
         resultHand = self.master.handDetector.detect(frame, int(time.monotonic()*1000))
-        frame = self.master.handDetector.draw_landmarks_on_image(frame, resultHand)
+        frame = self.master.handDetector.draw_landmarks_on_image(frame, resultHand) #to dod nanana issue
 
         if self.prevResultHand: # Get the speed of the hands
            self.speed = self.master.handDetector.getHandSpeed(self.prevResultHand.result, resultHand.result)
         
-        cv.putText(frame, f"Hand Speed: {round(self.speed,2)} m/s", (0, 25), cv.FONT_HERSHEY_DUPLEX,
+        cv.putText(frame, f"Hand Speed: {round(self.speed,2)} m/s", (0, 50), cv.FONT_HERSHEY_DUPLEX,
                    0.5, (0, 0, 0), 1, cv.LINE_AA)
 
         img_bgr = np.hstack((img_bgr,frame))

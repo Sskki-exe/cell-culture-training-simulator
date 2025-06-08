@@ -45,7 +45,7 @@ def transMatrix(roll,pitch):
     #     [0, -1, 0]
     # ]) 
 
-    flip1 =  1.8 * np.array([
+    flip1 =  1 * np.array([
         [1, 0, 0],
         [0, 1, 0],
         [0, 0, -1]
